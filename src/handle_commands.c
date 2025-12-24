@@ -104,7 +104,7 @@ void handle_program_exec_w_redirect_or_append() {
       size_of_full_command += strlen(ao->args[i]);
     }
     break;
-  case INITIAL_VAL:
+  case NO_REDIR:
     fprintf(stderr, "ao->redir_type is INITIAL_VAL for some reason \n");
     break;
   }
@@ -124,7 +124,7 @@ void handle_program_exec_w_redirect_or_append() {
       break;
     case APPEND_STD_ERR:
       err_line = "Unable to find '2>>' operator in ao->args!\n";
-    case INITIAL_VAL:
+    case NO_REDIR:
       err_line = "ao->redir_type is INITIAL_VAL for some reason \n";
       break;
     }
@@ -170,7 +170,7 @@ void handle_program_exec_w_redirect_or_append() {
     if (ao->redir_type == STD_ERR) {
       fd = open(ao->args[i + 1], O_CREAT | O_WRONLY);
     } else {
-      fd = open(ao->args[i+ 1], O_CREAT | O_APPEND | O_WRONLY);
+      fd = open(ao->args[i + 1], O_CREAT | O_APPEND | O_WRONLY);
     }
     if (fd == -1) {
       perror("open");
@@ -192,7 +192,7 @@ void handle_program_exec_w_redirect_or_append() {
     }
     free(full_command);
     return;
-  }   
+  }
   printf("You shouldn't be here (Line %d)\n", __LINE__);
 }
 
@@ -219,16 +219,20 @@ char *search_for_exec(char *exec_name) {
     int len_exec_name = strlen(exec_name);
     // Loop through every entry in directory
     while ((pDirent = readdir(dirp)) != NULL) {
-      if (strncmp(exec_name, pDirent->d_name, len_exec_name) == 0) {
-        // Found matching file, now need to check if it's executable
-        sprintf(full_path, "%s/%s", curr_path,
-                exec_name); // Construct full path name
-        if ((access(full_path, X_OK)) == 0) {
-          closedir(dirp);
-          free(paths);
-          return full_path;
-        }
+      if (strncmp(exec_name, pDirent->d_name, len_exec_name) != 0) {
+        // Didn't find matching filename, check next dirent
+        continue;
       }
+      // Found matching file, now need to check if it's executable
+      sprintf(full_path, "%s/%s", curr_path,
+              exec_name); // Construct full path name
+      if ((access(full_path, X_OK)) != 0) {
+        // File not executable, check next dirent
+        continue;
+      }
+        closedir(dirp);
+        free(paths);
+        return full_path;
     }
     curr_path = strtok(NULL, ":");
   }

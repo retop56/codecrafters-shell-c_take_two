@@ -28,7 +28,7 @@ struct arg_obj *create_arg_obj() {
   }
   created_ao->args = initial_args;
   created_ao->input = NULL;
-  created_ao->redir_type = INITIAL_VAL;
+  created_ao->redir_type = NO_REDIR;
   return created_ao;
 };
 
@@ -249,5 +249,5 @@ void clear_args() {
   ao->size = 0;
   ao->input = NULL;
   ao->curr_char = NULL;
-  ao->redir_type = INITIAL_VAL;
+  ao->redir_type = NO_REDIR;
 }
