@@ -22,7 +22,9 @@ int main() {
     if (!input) break;
     // Replace \n at end of string with null
     int len_of_input = strlen(input);
-    input[len_of_input - 1] = '\0';
+    if (len_of_input > 0 && input[len_of_input - 1] == '\n') {
+      input[len_of_input - 1] = '\0';
+    }
     /*ao->input = (char *)&input;*/
     ao->input = input;
     /*ao->curr_char = (char *)&input;*/
