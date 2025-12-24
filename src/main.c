@@ -31,7 +31,7 @@ char * command_name_generator(const char *text, int state) {
 }
 
 char **completion_func(const char *text, int start, int end) {
-  rl_attempted_completion_over = 1;
+  /*rl_attempted_completion_over = 1;*/
   return rl_completion_matches(text, command_name_generator);
 };
 

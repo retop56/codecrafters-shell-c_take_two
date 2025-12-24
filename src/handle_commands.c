@@ -216,9 +216,10 @@ char *search_for_exec(char *exec_name) {
       continue;
     }
     struct dirent *pDirent;
+    int len_exec_name = strlen(exec_name);
     // Loop through every entry in directory
     while ((pDirent = readdir(dirp)) != NULL) {
-      if (strcmp(exec_name, pDirent->d_name) == 0) {
+      if (strncmp(exec_name, pDirent->d_name, len_exec_name) == 0) {
         // Found matching file, now need to check if it's executable
         sprintf(full_path, "%s/%s", curr_path,
                 exec_name); // Construct full path name
