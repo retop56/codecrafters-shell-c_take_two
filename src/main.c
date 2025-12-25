@@ -16,7 +16,7 @@ char **completion_func(const char *text, int start, int end);
 typedef enum { COMMAND, EXEC, NONE } Multiple_T;
 
 static Multiple_T found_multiple = NONE;
-static char** matches;
+static char **matches;
 static int num_of_matches = 0;
 
 char *built_in_generator(const char *text, int state) {
@@ -97,26 +97,55 @@ int match_sort(const void *a, const void *b) {
   return strcmp(*(const char **)a, *(const char **)b);
 }
 
-char **completion_func(const char *text, int start, int end) {
-  /*static int num_of_matches;*/
-  if (found_multiple == EXEC) {
-    /* 
+char **multiple_matches() {
+  switch (found_multiple) {
+  case EXEC:
+    /*
      * Check if there are commands with prefix of previous
      * Ex. xyz_             is full prefix of
      *     xyz_foo          which is full prefix of
      *     xyz_foo_bar_     which is full prefix of
      *     xyz_foo_bar_baz
-    */
+     */
     qsort(matches, num_of_matches, sizeof(char *), match_sort);
     found_multiple = NONE;
     num_of_matches = 0;
     return matches;
-  }
-  if (found_multiple == COMMAND) {
+    break;
+  case COMMAND:
     found_multiple = NONE;
     num_of_matches = 0;
     return matches;
+  case NONE:
+    printf("You shouldn't be in %s when found_multiple is 'NONE'!\n",
+           __FUNCTION__);
+    exit(EXIT_FAILURE);
   }
+}
+
+char **completion_func(const char *text, int start, int end) {
+  if (found_multiple != NONE) {
+    return multiple_matches();
+  }
+  /*static int num_of_matches;*/
+  /*if (found_multiple == EXEC) {*/
+  /*  /**/
+  /*   * Check if there are commands with prefix of previous*/
+  /*   * Ex. xyz_             is full prefix of*/
+  /*   *     xyz_foo          which is full prefix of*/
+  /*   *     xyz_foo_bar_     which is full prefix of*/
+  /*   *     xyz_foo_bar_baz*/
+  /*   */
+  /*  qsort(matches, num_of_matches, sizeof(char *), match_sort);*/
+  /*  found_multiple = NONE;*/
+  /*  num_of_matches = 0;*/
+  /*  return matches;*/
+  /*}*/
+  /*if (found_multiple == COMMAND) {*/
+  /*  found_multiple = NONE;*/
+  /*  num_of_matches = 0;*/
+  /*  return matches;*/
+  /*}*/
   num_of_matches = 0;
   matches = rl_completion_matches(text, built_in_generator);
   if (matches != NULL) {
