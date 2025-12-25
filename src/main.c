@@ -17,6 +17,7 @@ typedef enum { COMMAND, EXEC, NONE } Multiple_T;
 
 static Multiple_T found_multiple = NONE;
 static char** matches;
+static int num_of_matches = 0;
 
 char *built_in_generator(const char *text, int state) {
   static int list_index, len;
@@ -96,10 +97,8 @@ int match_sort(const void *a, const void *b) {
   return strcmp(*(const char **)a, *(const char **)b);
 }
 
-
-
 char **completion_func(const char *text, int start, int end) {
-  static int num_of_matches;
+  /*static int num_of_matches;*/
   if (found_multiple == EXEC) {
     /* 
      * Check if there are commands with prefix of previous
@@ -118,9 +117,10 @@ char **completion_func(const char *text, int start, int end) {
     num_of_matches = 0;
     return matches;
   }
+  num_of_matches = 0;
   matches = rl_completion_matches(text, built_in_generator);
   if (matches != NULL) {
-    num_of_matches = 0;
+    /*num_of_matches = 0;*/
     while (matches[num_of_matches] != NULL) {
       num_of_matches++;
     }
@@ -132,7 +132,7 @@ char **completion_func(const char *text, int start, int end) {
   }
   matches = rl_completion_matches(text, executable_name_generator);
   if (matches != NULL) {
-    num_of_matches = 0;
+    /*num_of_matches = 0;*/
     while (matches[num_of_matches] != NULL) {
       num_of_matches++;
     }
