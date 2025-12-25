@@ -98,18 +98,17 @@ int match_sort(const void *a, const void *b) {
 char **completion_func(const char *text, int start, int end) {
   static char **matches;
   static int num_of_matches;
-  static int curr_match_index = 0;
   if (found_multiple == EXEC) {
-    if (curr_match_index == 0) {
-      qsort(matches, num_of_matches, sizeof(char *), match_sort);
-      curr_match_index = 1;
-    }
-    if (matches != NULL) {
-      return ++matches;
-    }
+    /* 
+     * Check if there are commands with prefix of previous
+     * Ex. xyz_             is full prefix of
+     *     xyz_foo          which is full prefix of
+     *     xyz_foo_bar_     which is full prefix of
+     *     xyz_foo_bar_baz
+    */
+    qsort(matches, num_of_matches, sizeof(char *), match_sort);
     found_multiple = NONE;
     num_of_matches = 0;
-    curr_match_index = 0;
     return matches;
   }
   if (found_multiple == COMMAND) {
