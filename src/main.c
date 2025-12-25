@@ -9,13 +9,15 @@
 struct arg_obj *ao;
 
 char *possible_completion_options[] = {"echo", "exit", NULL};
-char *command_name_generator(const char *text, int state);
+char *built_in_generator(const char *text, int state);
 char *executable_name_generator(const char *text, int state);
 char **completion_func(const char *text, int start, int end);
 
-static bool found_multiple = false;
+typedef enum { COMMAND, EXEC, NONE } Multiple_T;
 
-char *command_name_generator(const char *text, int state) {
+static Multiple_T found_multiple = NONE;
+
+char *built_in_generator(const char *text, int state) {
   static int list_index, len;
   char *name;
 
@@ -89,28 +91,57 @@ char *executable_name_generator(const char *text, int state) {
   return NULL;
 }
 
+int match_sort(const void *a, const void *b) {
+  return strcmp(*(const char **)a, *(const char **)b);
+}
+
 char **completion_func(const char *text, int start, int end) {
   static char **matches;
-  if (found_multiple == true) {
-    found_multiple = false;
+  static int num_of_matches;
+  static int curr_match_index = 0;
+  if (found_multiple == EXEC) {
+    if (curr_match_index == 0) {
+      qsort(matches, num_of_matches, sizeof(char *), match_sort);
+      curr_match_index = 1;
+    }
+    if (matches != NULL) {
+      return ++matches;
+    }
+    found_multiple = NONE;
+    num_of_matches = 0;
+    curr_match_index = 0;
     return matches;
   }
-  matches = rl_completion_matches(text, command_name_generator);
-  if (matches == NULL) {
-    matches = rl_completion_matches(text, executable_name_generator);
-    if (matches == NULL) {
-      return NULL;
+  if (found_multiple == COMMAND) {
+    found_multiple = NONE;
+    num_of_matches = 0;
+    return matches;
+  }
+  matches = rl_completion_matches(text, built_in_generator);
+  if (matches != NULL) {
+    num_of_matches = 0;
+    while (matches[num_of_matches] != NULL) {
+      num_of_matches++;
     }
-  }
-  int num_of_matches = 0;
-  while (matches[num_of_matches] != NULL) {
-    num_of_matches++;
-  }
-  if (num_of_matches > 1) {
-    found_multiple = true;
+    if (num_of_matches == 1) {
+      return matches;
+    }
+    found_multiple = COMMAND;
     return NULL;
   }
-  return matches;
+  matches = rl_completion_matches(text, executable_name_generator);
+  if (matches != NULL) {
+    num_of_matches = 0;
+    while (matches[num_of_matches] != NULL) {
+      num_of_matches++;
+    }
+    if (num_of_matches == 1) {
+      return matches;
+    }
+    found_multiple = EXEC;
+    return NULL;
+  }
+  return NULL;
 }
 
 int main() {
