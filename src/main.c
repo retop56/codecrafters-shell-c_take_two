@@ -16,6 +16,7 @@ char **completion_func(const char *text, int start, int end);
 typedef enum { COMMAND, EXEC, NONE } Multiple_T;
 
 static Multiple_T found_multiple = NONE;
+static char** matches;
 
 char *built_in_generator(const char *text, int state) {
   static int list_index, len;
@@ -95,8 +96,9 @@ int match_sort(const void *a, const void *b) {
   return strcmp(*(const char **)a, *(const char **)b);
 }
 
+
+
 char **completion_func(const char *text, int start, int end) {
-  static char **matches;
   static int num_of_matches;
   if (found_multiple == EXEC) {
     /* 
