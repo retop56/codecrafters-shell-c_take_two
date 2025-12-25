@@ -230,9 +230,9 @@ char *search_for_exec(char *exec_name) {
         // File not executable, check next dirent
         continue;
       }
-        closedir(dirp);
-        free(paths);
-        return full_path;
+      closedir(dirp);
+      free(paths);
+      return full_path;
     }
     curr_path = strtok(NULL, ":");
   }

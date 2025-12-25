@@ -3,11 +3,17 @@
 #include "handle_commands.h"
 #include <readline/history.h>
 #include <readline/readline.h>
+#include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
 struct arg_obj *ao;
 
 char *possible_completion_options[] = {"echo", "exit", NULL};
+char *command_name_generator(const char *text, int state);
+char *executable_name_generator(const char *text, int state);
+char **completion_func(const char *text, int start, int end);
+
+static bool found_multiple = false;
 
 char *command_name_generator(const char *text, int state) {
   static int list_index, len;
@@ -28,12 +34,15 @@ char *command_name_generator(const char *text, int state) {
 }
 
 char *executable_name_generator(const char *text, int state) {
-  static char *possible_execs[1024] = {0};
+  static char *possible_execs[1024];
   static int index = 0;
 
   char *path_env_var, *curr_path;
   if (state == 0) {
     int i = 0;
+    for (int x = 0; x < 1024; x++) {
+      possible_execs[x] = NULL;
+    }
     char *full_path = (char *)malloc(PATH_MAX * sizeof(char));
     // Create copy of path_env
     path_env_var = strdup(getenv("PATH"));
@@ -81,20 +90,40 @@ char *executable_name_generator(const char *text, int state) {
 }
 
 char **completion_func(const char *text, int start, int end) {
-  return rl_completion_matches(text, command_name_generator);
-};
+  static char **matches;
+  if (found_multiple == true) {
+    found_multiple = false;
+    return matches;
+  }
+  matches = rl_completion_matches(text, command_name_generator);
+  if (matches == NULL) {
+    matches = rl_completion_matches(text, executable_name_generator);
+    if (matches == NULL) {
+      return NULL;
+    }
+  }
+  int num_of_matches = 0;
+  while (matches[num_of_matches] != NULL) {
+    num_of_matches++;
+  }
+  if (num_of_matches > 1) {
+    found_multiple = true;
+    return NULL;
+  }
+  return matches;
+}
 
 int main() {
   rl_attempted_completion_function = completion_func;
-  rl_completion_entry_function = executable_name_generator;
-
   ao = create_arg_obj();
   char *input;
   while (true) {
     // Wait for user input
     input = readline("$ ");
-    if (!input)
+    if (!input) {
+      free(input);
       break;
+    }
     // Replace \n at end of string with null
     int len_of_input = strlen(input);
     if (len_of_input > 0 && input[len_of_input - 1] == '\n') {
