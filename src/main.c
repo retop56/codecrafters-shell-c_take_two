@@ -13,11 +13,12 @@ char *built_in_generator(const char *text, int state);
 char *executable_name_generator(const char *text, int state);
 char **completion_func(const char *text, int start, int end);
 
-typedef enum { COMMAND, EXEC, NONE } Multiple_T;
+typedef enum { COMMAND, EXEC, EXEC_LTP, NONE } Multiple_T;
 
 static Multiple_T found_multiple = NONE;
 static char **matches;
 static int num_of_matches = 0;
+static int ltp_ind = 0;
 
 char *built_in_generator(const char *text, int state) {
   static int list_index, len;
@@ -99,6 +100,10 @@ int match_sort(const void *a, const void *b) {
 
 char **multiple_matches() {
   switch (found_multiple) {
+  case COMMAND:
+    found_multiple = NONE;
+    num_of_matches = 0;
+    return matches;
   case EXEC:
     /*
      * Check if there are commands with prefix of previous
@@ -112,10 +117,9 @@ char **multiple_matches() {
     num_of_matches = 0;
     return matches;
     break;
-  case COMMAND:
-    found_multiple = NONE;
-    num_of_matches = 0;
-    return matches;
+  case EXEC_LTP:
+    printf("Inside %s: 'EXEC_LTP' case block!\n", __FUNCTION__);
+    exit(EXIT_FAILURE);
   case NONE:
     printf("You shouldn't be in %s when found_multiple is 'NONE'!\n",
            __FUNCTION__);
@@ -123,50 +127,77 @@ char **multiple_matches() {
   }
 }
 
+bool check_for_partial_completions() {
+  /*printf("\ninside %s\n", __FUNCTION__);*/
+  /*printf("num_of_matches: %d\n", num_of_matches);*/
+  int i = 1;
+  while (i + 1 < num_of_matches) {
+    int len = strlen(matches[i]);
+    /*printf("(matches[%d] len: %d) Comparing matches[%d]: %s \t with matches[%d]: %s\n",i, len, i, matches[i], i + 1, matches[i + 1]);*/
+    if (strncmp(matches[i], matches[i + 1], len) != 0) {
+      break;
+    }
+    i++;
+  }
+  return i > 1 ? true: false;
+}
+
+void print_partial_completions() {
+  printf("Inside %s\n", __FUNCTION__);
+  for (int i = 0; i < num_of_matches; i++) {
+    printf("match[%d]: %s\n", i, matches[i]);
+  }
+}
+
+void update_num_of_matches() {
+  num_of_matches = 0;
+  while (matches[num_of_matches] != NULL) {
+    num_of_matches++;
+  }
+}
+
 char **completion_func(const char *text, int start, int end) {
   if (found_multiple != NONE) {
-    return multiple_matches();
+    return multiple_matches(); // Stage #WT6 codepath doesn't reach here when
+                               // autocompleting 
   }
-  /*static int num_of_matches;*/
-  /*if (found_multiple == EXEC) {*/
-  /*  /**/
-  /*   * Check if there are commands with prefix of previous*/
-  /*   * Ex. xyz_             is full prefix of*/
-  /*   *     xyz_foo          which is full prefix of*/
-  /*   *     xyz_foo_bar_     which is full prefix of*/
-  /*   *     xyz_foo_bar_baz*/
-  /*   */
-  /*  qsort(matches, num_of_matches, sizeof(char *), match_sort);*/
-  /*  found_multiple = NONE;*/
-  /*  num_of_matches = 0;*/
-  /*  return matches;*/
-  /*}*/
-  /*if (found_multiple == COMMAND) {*/
-  /*  found_multiple = NONE;*/
-  /*  num_of_matches = 0;*/
-  /*  return matches;*/
-  /*}*/
-  num_of_matches = 0;
+  /*num_of_matches = 0;*/
   matches = rl_completion_matches(text, built_in_generator);
   if (matches != NULL) {
-    /*num_of_matches = 0;*/
-    while (matches[num_of_matches] != NULL) {
-      num_of_matches++;
-    }
+    /*while (matches[num_of_matches] != NULL) {*/
+      /*num_of_matches++;*/
+    /*}*/
+    update_num_of_matches();
     if (num_of_matches == 1) {
       return matches;
     }
+    qsort(matches, num_of_matches, sizeof(char*), match_sort);
     found_multiple = COMMAND;
     return NULL;
   }
   matches = rl_completion_matches(text, executable_name_generator);
   if (matches != NULL) {
-    /*num_of_matches = 0;*/
-    while (matches[num_of_matches] != NULL) {
-      num_of_matches++;
-    }
+    /*while (matches[num_of_matches] != NULL) {*/
+      /*num_of_matches++;*/
+    /*}*/
+    update_num_of_matches();
     if (num_of_matches == 1) {
       return matches;
+    }
+    qsort(matches, num_of_matches, sizeof(char*), match_sort);
+    if (check_for_partial_completions() == true) {
+      /*print_partial_completions();*/
+      /*printf("Found partial completions!\n");*/
+      /*found_multiple = EXEC_LTP;*/
+      /*do_partial_completion();*/
+      /*rl_delete_text(0, strlen(matches[ltp_ind++]));*/
+      /*rl_replace_line(matches[ltp_ind], 0);*/
+      /*fprintf(rl_line_buffer, matches[1]);*/
+      rl_delete_text(0, rl_end);
+      rl_point = 0;
+      rl_insert_text(matches[1]);
+      found_multiple = EXEC_LTP;
+      return NULL;
     }
     found_multiple = EXEC;
     return NULL;
