@@ -133,13 +133,14 @@ bool check_for_partial_completions() {
   int i = 1;
   while (i + 1 < num_of_matches) {
     int len = strlen(matches[i]);
-    /*printf("(matches[%d] len: %d) Comparing matches[%d]: %s \t with matches[%d]: %s\n",i, len, i, matches[i], i + 1, matches[i + 1]);*/
+    /*printf("(matches[%d] len: %d) Comparing matches[%d]: %s \t with
+     * matches[%d]: %s\n",i, len, i, matches[i], i + 1, matches[i + 1]);*/
     if (strncmp(matches[i], matches[i + 1], len) != 0) {
       break;
     }
     i++;
   }
-  return i > 1 ? true: false;
+  return i > 1 ? true : false;
 }
 
 void print_partial_completions() {
@@ -156,35 +157,34 @@ void update_num_of_matches() {
   }
 }
 
+void add_partial_completion() {
+  rl_delete_text(0, rl_end);
+  rl_point = 0;
+  rl_insert_text(matches[1]);
+}
+
 char **completion_func(const char *text, int start, int end) {
   if (found_multiple != NONE) {
     return multiple_matches(); // Stage #WT6 codepath doesn't reach here when
-                               // autocompleting 
+                               // autocompleting
   }
-  /*num_of_matches = 0;*/
   matches = rl_completion_matches(text, built_in_generator);
   if (matches != NULL) {
-    /*while (matches[num_of_matches] != NULL) {*/
-      /*num_of_matches++;*/
-    /*}*/
     update_num_of_matches();
     if (num_of_matches == 1) {
       return matches;
     }
-    qsort(matches, num_of_matches, sizeof(char*), match_sort);
+    qsort(matches, num_of_matches, sizeof(char *), match_sort);
     found_multiple = COMMAND;
     return NULL;
   }
   matches = rl_completion_matches(text, executable_name_generator);
   if (matches != NULL) {
-    /*while (matches[num_of_matches] != NULL) {*/
-      /*num_of_matches++;*/
-    /*}*/
     update_num_of_matches();
     if (num_of_matches == 1) {
       return matches;
     }
-    qsort(matches, num_of_matches, sizeof(char*), match_sort);
+    qsort(matches, num_of_matches, sizeof(char *), match_sort);
     if (check_for_partial_completions() == true) {
       /*print_partial_completions();*/
       /*printf("Found partial completions!\n");*/
@@ -193,9 +193,7 @@ char **completion_func(const char *text, int start, int end) {
       /*rl_delete_text(0, strlen(matches[ltp_ind++]));*/
       /*rl_replace_line(matches[ltp_ind], 0);*/
       /*fprintf(rl_line_buffer, matches[1]);*/
-      rl_delete_text(0, rl_end);
-      rl_point = 0;
-      rl_insert_text(matches[1]);
+      add_partial_completion();
       found_multiple = EXEC_LTP;
       return NULL;
     }
