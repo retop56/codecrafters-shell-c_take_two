@@ -29,12 +29,13 @@ struct arg_obj *create_arg_obj() {
   created_ao->args = initial_args;
   created_ao->input = NULL;
   created_ao->redir_type = NO_REDIR;
+  created_ao->pipe_amt = 0;
   return created_ao;
 };
 
 void expand_arg_obj() {
   ao->capacity = ao->capacity * 2;
-  char **new_args = realloc(ao->args, ao->capacity * 2);
+  char **new_args = realloc(ao->args, sizeof(char *) * ao->capacity);
   if (new_args == NULL) {
     fprintf(stderr, "Failed to rellocate arg_obj args size!");
     exit(EXIT_FAILURE);
@@ -51,7 +52,12 @@ void add_args() {
     if ((ao->size + 1) >= ao->capacity) {
       expand_arg_obj();
     }
-    if (strncmp(ao->curr_char, "\'", 1) == 0) {
+    if (strncmp(ao->curr_char, "|", 1) == 0) {
+      ao->pipe_amt = 1;
+      while (*ao->curr_char == '|' || *ao->curr_char == ' ') {
+        ao->curr_char++;
+      }
+    } else if (strncmp(ao->curr_char, "\'", 1) == 0) {
       received_arg = get_single_quote_arg();
       if (strncmp(ao->curr_char, "\'", 1) == 0) {
         received_arg =

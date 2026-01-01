@@ -10,4 +10,5 @@ struct arg_obj {
   char *input;
   char *curr_char;
   enum redir_t redir_type;
+  int pipe_amt;
 };
