@@ -233,7 +233,9 @@ int main() {
     ao->input = input;
     ao->curr_char = input;
     add_args();
-    if (ao->redir_type != NO_REDIR) {
+    if (ao->pipe_amt > 0) {
+      handle_program_exec_w_pipe();
+    } else if (ao->redir_type != NO_REDIR) {
       handle_program_exec_w_redirect_or_append();
     } else if (strncmp(ao->args[0], "exit", 4) == 0) {
       handle_exit_command();

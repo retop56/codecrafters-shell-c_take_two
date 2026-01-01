@@ -7,3 +7,4 @@ void handle_program_execution();
 void handle_pwd_command();
 void handle_cd_command();
 void handle_program_exec_w_redirect_or_append();
+void handle_program_exec_w_pipe();

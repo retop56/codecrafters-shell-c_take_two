@@ -93,6 +93,7 @@ void add_args() {
       }
       set_redir_type(received_arg);
       ao->args[ao->size++] = received_arg;
+      curr_arg[0] = '\0';
     }
   }
 }

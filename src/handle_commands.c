@@ -66,6 +66,11 @@ void handle_program_execution() {
   }
 }
 
+void handle_program_exec_w_pipe() {
+  printf("inside handle_program_exec_w_pipe!\n");
+  exit(EXIT_FAILURE);
+}
+
 void handle_program_exec_w_redirect_or_append() {
   size_t i = 0;
   size_t size_of_full_command = 0;
