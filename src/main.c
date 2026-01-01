@@ -12,6 +12,7 @@ char *possible_completion_options[] = {"echo", "exit", NULL};
 char *built_in_generator(const char *text, int state);
 char *executable_name_generator(const char *text, int state);
 char **completion_func(const char *text, int start, int end);
+void add_partial_completion(char *text_to_insert, bool add_space);
 
 typedef enum { COMMAND, EXEC, EXEC_LTP, NONE } Multiple_T;
 
@@ -99,6 +100,8 @@ int match_sort(const void *a, const void *b) {
 }
 
 char **multiple_matches() {
+  char **next_ltp_comp;
+  int len_of_buff;
   switch (found_multiple) {
   case COMMAND:
     found_multiple = NONE;
@@ -118,23 +121,32 @@ char **multiple_matches() {
     return matches;
     break;
   case EXEC_LTP:
-    printf("Inside %s: 'EXEC_LTP' case block!\n", __FUNCTION__);
-    exit(EXIT_FAILURE);
+    len_of_buff = strlen(rl_line_buffer);
+    for (int i = 1; i < num_of_matches; i++) {
+      if (strncmp(rl_line_buffer, matches[i], len_of_buff) == 0) {
+        if (i == num_of_matches - 1) {
+          add_partial_completion(matches[i], true);
+        } else {
+          add_partial_completion(matches[i], false);
+        }
+        return NULL;
+      }
+    }
+    found_multiple = NONE;
+    break;
   case NONE:
     printf("You shouldn't be in %s when found_multiple is 'NONE'!\n",
            __FUNCTION__);
     exit(EXIT_FAILURE);
+    break;
   }
+  return NULL;
 }
 
 bool check_for_partial_completions() {
-  /*printf("\ninside %s\n", __FUNCTION__);*/
-  /*printf("num_of_matches: %d\n", num_of_matches);*/
   int i = 1;
   while (i + 1 < num_of_matches) {
     int len = strlen(matches[i]);
-    /*printf("(matches[%d] len: %d) Comparing matches[%d]: %s \t with
-     * matches[%d]: %s\n",i, len, i, matches[i], i + 1, matches[i + 1]);*/
     if (strncmp(matches[i], matches[i + 1], len) != 0) {
       break;
     }
@@ -157,16 +169,22 @@ void update_num_of_matches() {
   }
 }
 
-void add_partial_completion() {
+void add_partial_completion(char *text_to_insert, bool add_space) {
   rl_delete_text(0, rl_end);
   rl_point = 0;
-  rl_insert_text(matches[1]);
+  if (text_to_insert == NULL) {
+    rl_insert_text(matches[1]);
+  } else {
+    rl_insert_text(text_to_insert);
+  }
+  if (add_space) {
+    rl_insert_text(" ");
+  }
 }
 
 char **completion_func(const char *text, int start, int end) {
   if (found_multiple != NONE) {
-    return multiple_matches(); // Stage #WT6 codepath doesn't reach here when
-                               // autocompleting
+    return multiple_matches();
   }
   matches = rl_completion_matches(text, built_in_generator);
   if (matches != NULL) {
@@ -186,14 +204,7 @@ char **completion_func(const char *text, int start, int end) {
     }
     qsort(matches, num_of_matches, sizeof(char *), match_sort);
     if (check_for_partial_completions() == true) {
-      /*print_partial_completions();*/
-      /*printf("Found partial completions!\n");*/
-      /*found_multiple = EXEC_LTP;*/
-      /*do_partial_completion();*/
-      /*rl_delete_text(0, strlen(matches[ltp_ind++]));*/
-      /*rl_replace_line(matches[ltp_ind], 0);*/
-      /*fprintf(rl_line_buffer, matches[1]);*/
-      add_partial_completion();
+      add_partial_completion(NULL, false);
       found_multiple = EXEC_LTP;
       return NULL;
     }
