@@ -94,13 +94,14 @@ void handle_program_exec_w_pipe() {
     case 0: // child process
       close(STDOUT_FILENO);
       dup(fildes[1]);
+      close(fildes[0]);
+      close(fildes[1]);
       execvp(first_prog_args[0], first_prog_args);
       perror("execvp");
       exit(EXIT_FAILURE);
       break;
   }
   char **second_prog_args = (char **)malloc((ao->size - i) * sizeof(char *));
-  /*printf("ao->size - 1 = %zu\n", ao->size - i);*/
   int a = 0;
   i++; /* skip past '|' arg */
   while (i < ao->size) {
@@ -108,11 +109,6 @@ void handle_program_exec_w_pipe() {
     a++;
     i++;
   }
-  /*printf("a = %d\n", a);*/
-  /*printf("Contents of second_prog_args: \n");*/
-  /*for (int z = 0; z < a; z++) {*/
-    /*printf("second_prog_args[%d]: %s\n", z, second_prog_args[z]);*/
-  /*}*/
   second_prog_args[a] = (char *)NULL;
   pid_t second_fork = fork();
   switch (second_fork) {
@@ -123,11 +119,15 @@ void handle_program_exec_w_pipe() {
     case 0: /* child process */
       close(STDIN_FILENO);
       dup(fildes[0]);
+      close(fildes[0]);
+      close(fildes[1]);
       execvp(second_prog_args[0], second_prog_args);
       perror("execvp");
       exit(EXIT_FAILURE);
       break;
   }
+  close(fildes[0]);
+  close(fildes[1]);
   waitpid(first_fork, NULL, 0);
   waitpid(second_fork, NULL, 0);
 
