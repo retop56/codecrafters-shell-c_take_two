@@ -4,6 +4,7 @@
 #include "cc_shell.h"
 #include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 extern struct arg_obj *ao;
 
@@ -67,8 +68,96 @@ void handle_program_execution() {
 }
 
 void handle_program_exec_w_pipe() {
-  printf("inside handle_program_exec_w_pipe!\n");
-  exit(EXIT_FAILURE);
+  /*printf("inside handle_program_exec_w_pipe!\n");*/
+  int pipe_arg_num = 0;
+  for (int i = 0; i < ao->size; i++) {
+    if (strncmp(ao->args[i], "|", 1) == 0) {
+      pipe_arg_num = i;
+      break;
+    }
+  }
+  int prog_str_length = 0;
+  for (int i = 0; i < pipe_arg_num; i++) {
+    prog_str_length += strlen(ao->args[i]);
+    prog_str_length += 1; // for space between args, and null at end
+  }
+  char *prog_str_with_args = (char *)malloc(prog_str_length * sizeof(char));
+  prog_str_with_args[0] = '\0';
+  for (int i = 0; i < pipe_arg_num; i++) {
+    strcat(prog_str_with_args, ao->args[i]);
+    strcat(prog_str_with_args, " ");
+  }
+  prog_str_with_args[prog_str_length] = '\0';
+  /*printf("prog_str_with_args: %s\n", prog_str_with_args);*/
+  int length_of_piping_target_string = 0;
+  for (int i = pipe_arg_num + 1; i < ao->size; i++) {
+    length_of_piping_target_string += strlen(ao->args[i]);
+  }
+  /*printf("length_of_piping_target_string: %d\n", length_of_piping_target_string);*/
+  char *what_we_are_piping_to =
+      (char *)malloc((length_of_piping_target_string + 1) * sizeof(char));
+  what_we_are_piping_to[0] = '\0';
+  for (int i = pipe_arg_num + 1; i < ao->size; i++) {
+    strcat(what_we_are_piping_to, ao->args[i]);
+  }
+  /*printf("what_we_are_piping_to: %s\n", what_we_are_piping_to);*/
+  int fildes[2];
+  int status = pipe(fildes);
+  if (status == -1) {
+    fprintf(stderr, "Pipe in %s failed! (Line %d)\n", __FUNCTION__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+  /*
+   * fork and 
+   * - set STDOUT to write end of pipe
+   * - run first process
+   */
+  /*char buf[BUFF_LENGTH];*/
+  /*ssize_t numread;*/
+  pid_t pid = fork();
+  switch (pid) {
+    case -1:
+      perror("fork");
+      exit(EXIT_FAILURE);
+      break;
+    case 0: //child process
+      close(STDOUT_FILENO);
+      dup(fildes[1]); // Duplicate the output side of pipe to stdout
+      system(prog_str_with_args); 
+      break;
+    default: // parent process
+      /*numread = read(fildes[0], buf, BUFF_LENGTH); */
+      /*while (numread > 0) {*/
+        /*printf("Got this from fildes[0]:\n%s", buf);*/
+        /*numread = read(fildes[0], buf, BUFF_LENGTH);*/
+      /*}*/
+      wait(&pid);
+      break;
+  }
+  /*
+   * fork again and 
+   * - set STDIN to read end of pipe
+   * - run second process
+   */  
+  pid = fork();
+  switch (pid) {
+    case -1:
+      perror("fork");
+      exit(EXIT_FAILURE);
+      break;
+    case 0: // child process
+      /*close(STDIN_FILENO);*/
+      /*dup2(fildes[0], STDIN_FILENO);*/
+      close(STDIN_FILENO);
+      dup(fildes[0]); // Duplicate the input side of pipe to stdin
+      system(what_we_are_piping_to);
+      break;
+    default:
+      wait(&pid);
+      break;
+  }
+  /*close(fildes[0]);*/
+  /*close(fildes[1]);*/
 }
 
 void handle_program_exec_w_redirect_or_append() {

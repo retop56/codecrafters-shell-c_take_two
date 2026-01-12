@@ -42,6 +42,12 @@ void expand_arg_obj() {
   }
 }
 
+void skip_past_spaces() {
+  while (*ao->curr_char == ' ') {
+    ao->curr_char++;
+  }
+}
+
 void add_args() {
   char *received_arg;
   while (*ao->curr_char != '\0') {
@@ -54,18 +60,20 @@ void add_args() {
     }
     if (strncmp(ao->curr_char, "|", 1) == 0) {
       ao->pipe_amt = 1;
-      while (*ao->curr_char == '|' || *ao->curr_char == ' ') {
+      received_arg = strdup("|");
+      while (*ao->curr_char == '|') {
         ao->curr_char++;
       }
+      skip_past_spaces();
+      ao->args[ao->size++] = received_arg;
+      curr_arg[0] = '\0';
     } else if (strncmp(ao->curr_char, "\'", 1) == 0) {
       received_arg = get_single_quote_arg();
       if (strncmp(ao->curr_char, "\'", 1) == 0) {
         received_arg =
             skip_past_adjacent_quotes_and_combine(received_arg, '\'');
       }
-      while (*ao->curr_char == ' ') {
-        ao->curr_char++;
-      }
+      skip_past_spaces();
       ao->args[ao->size++] = received_arg;
     } else if (strncmp(ao->curr_char, "\"", 1) == 0) {
       received_arg = get_double_quote_arg();
@@ -73,9 +81,7 @@ void add_args() {
         received_arg =
             skip_past_adjacent_quotes_and_combine(received_arg, '\"');
       }
-      while (*ao->curr_char == ' ') {
-        ao->curr_char++;
-      }
+      skip_past_spaces();
       ao->args[ao->size++] = received_arg;
     } else {
       received_arg = get_normal_arg();
@@ -88,9 +94,7 @@ void add_args() {
         received_arg =
             skip_past_adjacent_quotes_and_combine(received_arg, '\"');
       }
-      while (*ao->curr_char == ' ') {
-        ao->curr_char++;
-      }
+      skip_past_spaces();
       set_redir_type(received_arg);
       ao->args[ao->size++] = received_arg;
       curr_arg[0] = '\0';
@@ -257,4 +261,5 @@ void clear_args() {
   ao->input = NULL;
   ao->curr_char = NULL;
   ao->redir_type = NO_REDIR;
+  ao->pipe_amt = 0;
 }
