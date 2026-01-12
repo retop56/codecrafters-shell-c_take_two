@@ -128,8 +128,9 @@ void handle_program_exec_w_pipe() {
       exit(EXIT_FAILURE);
       break;
   }
-  /*exit(EXIT_FAILURE);*/
-  while(wait(NULL) > 0); /* wait for *all* children to finish */
+  waitpid(first_fork, NULL, 0);
+  waitpid(second_fork, NULL, 0);
+
 }
 
 void handle_program_exec_w_redirect_or_append() {
