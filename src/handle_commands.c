@@ -3,6 +3,7 @@
 #include "argparser.h"
 #include "cc_shell.h"
 #include <fcntl.h>
+#include <linux/limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -457,51 +458,52 @@ void handle_cd_command(Cmd_Header *c) {
   if (cd_comm->txt == NULL) {
     return;
   }
+  char new_dir[PATH_MAX] = {0};
+  if (strncmp(cd_comm->txt, "./", 2) == 0) {
+    strcat(new_dir, getenv("PWD"));
+    strcat(new_dir, cd_comm->txt + 1);
+    if (check_if_directory_exists(new_dir) == false) {
+      printf("cd: %s: No such file or directory\n", new_dir);
+      return;
+    }
+    setenv("PWD", new_dir, 1);
+    return;
+  }
+  if (strncmp(cd_comm->txt, "../", 3) == 0) {
+    int count = 0;
+    char *s = cd_comm->txt;
+    while (strncmp(s, "../", 3) == 0) {
+      count++;
+      s += 3;
+    }
+    strcat(new_dir, getenv("PWD"));
+    int len_of_curr_pwd = strlen(getenv("PWD"));
+    char *start = new_dir;
+    s = &new_dir[len_of_curr_pwd - 1];
+    while (s != start && count != 0) {
+      if (*s == '/') {
+        if (--count == 0) {
+          break;
+        }
+      }
+      s--;
+    }
+    if (count == 0) {
+      *s = '\0';
+      setenv("PWD", new_dir, 1);
+    }
+    return;
+  }
+  if (strncmp(cd_comm->txt, "~", 1) == 0) {
+    char *h = getenv("HOME");
+    if (h != NULL) {
+      setenv("PWD", h, 1);
+    }
+    return;
+  }
   if (check_if_directory_exists(cd_comm->txt) == false) {
     printf("cd: %s: No such file or directory\n", cd_comm->txt);
     return;
   }
   setenv("PWD", cd_comm->txt, 1);
-  /*if (*ao->args[1] == '\0') {*/
-  /*  return;*/
-  /*} else if (strncmp(ao->args[1], "./", 2) == 0) {*/
-  /*  char *fixed_arg = strdup(ao->args[1] + 1);*/
-  /*  char *new_dir = (char *)calloc(1000, sizeof(char));*/
-  /*  strcat(new_dir, getenv("PWD"));*/
-  /*  strcat(new_dir, fixed_arg);*/
-  /*  if (chdir(new_dir) != 0) {*/
-  /*    printf("cd: %s: No such file or directory\n", ao->args[1]);*/
-  /*    return;*/
-  /*  }*/
-  /*  setenv("PWD", new_dir, 1);*/
-  /*  return;*/
-  /*} else if (strncmp(ao->args[1], "../", 3) == 0) {*/
-  /*  size_t num_of_levels = 1;*/
-  /*  char *arg_ptr = ao->args[1] + 3;*/
-  /*  while (*arg_ptr != '\0' && strncmp(arg_ptr, "../", 3) == 0) {*/
-  /*    arg_ptr += 3;*/
-  /*    num_of_levels++;*/
-  /*  }*/
-  /*  char *curr_pwd = strdup(getenv("PWD"));*/
-  /*  char *pwd_ptr = curr_pwd + (strlen(curr_pwd) - 1);*/
-  /*  for (; num_of_levels > 0; num_of_levels--) {*/
-  /*    pwd_ptr--;*/
-  /*    while (*pwd_ptr != '/') {*/
-  /*      pwd_ptr--;*/
-  /*    }*/
-  /*  }*/
-  /*  size_t length_of_new_pwd = pwd_ptr - curr_pwd;*/
-  /**/
-  /*  curr_pwd[length_of_new_pwd] = '\0';*/
-  /*  setenv("PWD", curr_pwd, 1);*/
-  /*  return;*/
-  /*} else if (strncmp(ao->args[1], "~", 1) == 0) {*/
-  /*  char *home_dir = getenv("HOME");*/
-  /*  setenv("PWD", home_dir, 1);*/
-  /*  return;*/
-  /*} else if (chdir(ao->args[1]) != 0) {*/
-  /*  printf("cd: %s: No such file or directory\n", ao->args[1]);*/
-  /*  return;*/
-  /*}*/
-  /*setenv("PWD", ao->args[1], 1);*/
 }
