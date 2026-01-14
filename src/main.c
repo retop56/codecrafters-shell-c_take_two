@@ -231,28 +231,34 @@ int main() {
     if (len_of_input > 0 && input[len_of_input - 1] == '\n') {
       input[len_of_input - 1] = '\0';
     }
-    ao->input = input;
-    ao->curr_char = input;
-    add_args();
-    if (strstr(ao->input, " | ") != NULL) {
-      handle_program_exec_w_pipe();
-    } else if (ao->redir_type != NO_REDIR) {
-      handle_program_exec_w_redirect_or_append();
-    } else if (strncmp(ao->args[0], "exit", 4) == 0) {
-      handle_exit_command();
-    } else if (strncmp(ao->args[0], "echo", 4) == 0) {
-      handle_echo_command();
-    } else if (strncmp(ao->args[0], "type", 4) == 0) {
-      handle_type_command();
-    } else if (strncmp(ao->args[0], "pwd", 3) == 0) {
-      handle_pwd_command();
-    } else if (strncmp(ao->args[0], "cd", 2) == 0) {
-      handle_cd_command();
-    } else {
-      handle_program_execution();
+    /*ao->input = input;*/
+    /*ao->curr_char = input;*/
+    Cmd_Header *cmd = create_command(input);
+    switch (cmd->type) {
+      case CMD_EXIT:
+        handle_exit_command();
+        break;
+      case CMD_INVALID:
+        handle_invalid_command(cmd);
+        break;
+      case CMD_ECHO:
+        handle_echo_command(cmd);
+        break;
+      case CMD_TYPE:
+        handle_type_command(cmd);
+        break;
+      case CMD_EXECUTABLE:
+        handle_executable_command(cmd);
+        break;
+      case CMD_PWD:
+        handle_pwd_command();
+        break;
+      case CMD_CD:
+        handle_cd_command(cmd);
+        break;
     }
-    clear_args();
     free(input);
+    free(cmd);
   }
   free(ao);
   return 0;

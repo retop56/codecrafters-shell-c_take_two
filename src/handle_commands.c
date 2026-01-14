@@ -9,39 +9,162 @@
 extern struct arg_obj *ao;
 
 static char *search_for_exec(char *exec_name);
+Cmd_Header *create_exit_command();
+Cmd_Header *create_invalid_command(char *input);
+Cmd_Header *create_echo_command(char *input);
+Cmd_Header *create_type_command(char *input);
+Cmd_Header *create_executable_command(char *input);
+Cmd_Header *create_pwd_command();
+Cmd_Header *create_cd_command(char *input);
+char **resize_command_args(char **curr_args, int new_arg_size);
+
+Cmd_Header *create_command(char *input) {
+  char *possible_exe;
+  if (strncmp(input, "exit", 4) == 0) {
+    return create_exit_command();
+  } else if (strncmp(input, "echo ", 5) == 0) {
+    return create_echo_command(input);
+  } else if (strncmp(input, "type ", 5) == 0) {
+    return create_type_command(input);
+  } else if (strncmp(input, "pwd", 3) == 0) {
+    return create_pwd_command();
+  } else if(strncmp(input, "cd ", 3) == 0) {
+    return create_cd_command(input);
+  } else if ((possible_exe = search_for_exec(input)) != NULL) {
+    return create_executable_command(input);
+  } else {
+    return create_invalid_command(input);
+  }
+  return NULL;
+}
+
+Cmd_Header *create_exit_command() {
+  Exit_Command *c = (Exit_Command *)malloc(sizeof(Exit_Command));
+  c->hdr.type = CMD_EXIT;
+  return (Cmd_Header *)c;
+}
+
+Cmd_Header *create_invalid_command(char *input) {
+  Invalid_Command *c = (Invalid_Command *)malloc(sizeof(Invalid_Command));
+  c->hdr.type = CMD_INVALID;
+  c->txt = input;
+  return (Cmd_Header *)c;
+}
+
+Cmd_Header *create_echo_command(char *input) {
+  Echo_Command *c = (Echo_Command *)malloc(sizeof(Echo_Command));
+  c->hdr.type = CMD_ECHO;
+  c->txt = input + 5;
+  return (Cmd_Header *)c;
+}
+
+Cmd_Header *create_type_command(char *input) {
+  Type_Command *c = (Type_Command *)malloc(sizeof(Type_Command));
+  c->hdr.type = CMD_TYPE;
+  c->txt = input + 5;
+  return (Cmd_Header *)c;
+}
+
+Cmd_Header *create_executable_command(char *input) {
+  Executable_Command *c =
+      (Executable_Command *)malloc(sizeof(Executable_Command));
+  c->hdr.type = CMD_EXECUTABLE;
+  int arg_size = 10;
+  char **args = (char **)malloc(sizeof(char *) * arg_size);
+  int n = 0;
+  char *curr_tok = strtok(input, " ");
+  while (curr_tok) {
+    args[n++] = curr_tok;
+    if (n == arg_size) {
+      arg_size *= 2;
+      args = resize_command_args(args, arg_size);
+    }
+    curr_tok = strtok(NULL, " ");
+  }
+  c->args = args;
+  c->num_of_args = n;
+  return (Cmd_Header *)c;
+}
+
+Cmd_Header *create_pwd_command() {
+  Pwd_Command *c = (Pwd_Command *)malloc(sizeof(Pwd_Command));
+  c->hdr.type = CMD_PWD;
+  return (Cmd_Header *)c;
+}
+
+Cmd_Header *create_cd_command(char *input) {
+  Cd_Command *c = (Cd_Command *)malloc(sizeof(Cd_Command));  
+  c->hdr.type = CMD_CD;
+  c->txt = input + 3;
+  return (Cmd_Header *)c;
+}
+
+char **resize_command_args(char **curr_args, int new_arg_size) {
+  char **new_args = realloc(curr_args, (sizeof(char **) * new_arg_size));
+  if (new_args == NULL) {
+    printf("Realloc failed in %s (Line: %d)\n", __FUNCTION__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+  return new_args;
+}
+
+void handle_invalid_command(Cmd_Header *c) {
+  printf("%s: command not found\n", ((Invalid_Command *)c)->txt);
+}
 
 void handle_exit_command() { exit(0); }
 
-void handle_echo_command() {
-  if (ao->args[1] != NULL) {
-    printf("%s", ao->args[1]);
-  }
-  for (size_t i = 2; i < ao->size; i++) {
-    printf(" %s", ao->args[i]);
-  }
-  printf("\n");
+void handle_echo_command(Cmd_Header *c) {
+  printf("%s\n", ((Echo_Command *)c)->txt);
 }
 
-void handle_type_command() {
-  if (strcmp(ao->args[1], "echo") == 0 || strcmp(ao->args[1], "exit") == 0 ||
-      strcmp(ao->args[1], "type") == 0 || strcmp(ao->args[1], "pwd") == 0) {
-    printf("%s is a shell builtin\n", ao->args[1]);
+void handle_type_command(Cmd_Header *c) {
+  char *t = ((Type_Command *)c)->txt;
+  char *possible_exe;
+  if (strcmp(t, "echo") == 0 || strcmp(t, "exit") == 0 ||
+      strcmp(t, "type") == 0 || strcmp(t, "pwd") == 0) {
+    printf("%s is a shell builtin\n", t);
+  } else if ((possible_exe = search_for_exec(t)) != NULL) {
+    printf("%s is %s\n", t, possible_exe);
   } else {
-    char *exec_name = (char *)malloc(256 * sizeof(char));
-    strcpy(exec_name, ao->args[1]);
-    char *full_path = search_for_exec(exec_name);
-    if (full_path == NULL) {
-      printf("%s: not found\n", exec_name);
-      free(full_path);
-      free(exec_name);
-      return;
-    }
-    printf("%s is %s\n", exec_name, full_path);
-    free(full_path);
-    free(exec_name);
+    printf("%s: not found\n", t);
   }
+  /*} else {*/
+  /*  char *exec_name = (char *)malloc(256 * sizeof(char));*/
+  /*  strcpy(exec_name, ao->args[1]);*/
+  /*  char *full_path = search_for_exec(exec_name);*/
+  /*  if (full_path == NULL) {*/
+  /*    printf("%s: not found\n", exec_name);*/
+  /*    free(full_path);*/
+  /*    free(exec_name);*/
+  /*    return;*/
+  /*  }*/
+  /*  printf("%s is %s\n", exec_name, full_path);*/
+  /*  free(full_path);*/
+  /*  free(exec_name);*/
+  /*}*/
 }
 
+void handle_executable_command(Cmd_Header *c) {
+  Executable_Command *exec = (Executable_Command *)c;
+  pid_t p = fork();
+  switch (p) {
+  case -1:
+    fprintf(stderr, "Fork failed!\n");
+    exit(EXIT_FAILURE);
+    break;
+  case 0:
+    /*
+     * Make sure last argument in list is NULL to satisfy requirements
+     * of execvp
+     */
+    exec->args[exec->num_of_args] = NULL;
+    execvp(exec->args[0], exec->args);
+    perror("execvp");
+    exit(EXIT_FAILURE);
+  }
+  wait(&p);
+}
 void handle_program_execution() {
   char *full_path = search_for_exec(ao->args[0]);
   if (full_path == NULL) {
@@ -87,19 +210,19 @@ void handle_program_exec_w_pipe() {
   char buf[BUFF_LENGTH];
   pid_t first_fork = fork();
   switch (first_fork) {
-    case -1:
-      perror("fork");
-      exit(EXIT_FAILURE);
-      break;
-    case 0: // child process
-      close(STDOUT_FILENO);
-      dup(fildes[1]);
-      close(fildes[0]);
-      close(fildes[1]);
-      execvp(first_prog_args[0], first_prog_args);
-      perror("execvp");
-      exit(EXIT_FAILURE);
-      break;
+  case -1:
+    perror("fork");
+    exit(EXIT_FAILURE);
+    break;
+  case 0: // child process
+    close(STDOUT_FILENO);
+    dup(fildes[1]);
+    close(fildes[0]);
+    close(fildes[1]);
+    execvp(first_prog_args[0], first_prog_args);
+    perror("execvp");
+    exit(EXIT_FAILURE);
+    break;
   }
   char **second_prog_args = (char **)malloc((ao->size - i) * sizeof(char *));
   int a = 0;
@@ -112,25 +235,24 @@ void handle_program_exec_w_pipe() {
   second_prog_args[a] = (char *)NULL;
   pid_t second_fork = fork();
   switch (second_fork) {
-    case -1:
-      perror("fork");
-      exit(EXIT_FAILURE);
-      break;
-    case 0: /* child process */
-      close(STDIN_FILENO);
-      dup(fildes[0]);
-      close(fildes[0]);
-      close(fildes[1]);
-      execvp(second_prog_args[0], second_prog_args);
-      perror("execvp");
-      exit(EXIT_FAILURE);
-      break;
+  case -1:
+    perror("fork");
+    exit(EXIT_FAILURE);
+    break;
+  case 0: /* child process */
+    close(STDIN_FILENO);
+    dup(fildes[0]);
+    close(fildes[0]);
+    close(fildes[1]);
+    execvp(second_prog_args[0], second_prog_args);
+    perror("execvp");
+    exit(EXIT_FAILURE);
+    break;
   }
   close(fildes[0]);
   close(fildes[1]);
   waitpid(first_fork, NULL, 0);
   waitpid(second_fork, NULL, 0);
-
 }
 
 void handle_program_exec_w_redirect_or_append() {
@@ -263,8 +385,10 @@ void handle_program_exec_w_redirect_or_append() {
   printf("You shouldn't be here (Line %d)\n", __LINE__);
 }
 
-char *search_for_exec(char *exec_name) {
+char *search_for_exec(char *exec_input) {
   char *full_path = (char *)malloc(PATH_MAX * sizeof(char));
+  char *exec_only = strdup(exec_input);
+  exec_only = strtok(exec_only, " ");
   char *paths = strdup(getenv("PATH"));
   if (paths == NULL) {
     printf("Unable to get 'PATH' environment variable!\n");
@@ -283,28 +407,30 @@ char *search_for_exec(char *exec_name) {
       continue;
     }
     struct dirent *pDirent;
-    int len_exec_name = strlen(exec_name);
+    int len_exec_name = strlen(exec_only);
     // Loop through every entry in directory
     while ((pDirent = readdir(dirp)) != NULL) {
-      if (strncmp(exec_name, pDirent->d_name, len_exec_name) != 0) {
+      if (strncmp(exec_only, pDirent->d_name, len_exec_name) != 0) {
         // Didn't find matching filename, check next dirent
         continue;
       }
       // Found matching file, now need to check if it's executable
       sprintf(full_path, "%s/%s", curr_path,
-              exec_name); // Construct full path name
+              exec_only); // Construct full path name
       if ((access(full_path, X_OK)) != 0) {
         // File not executable, check next dirent
         continue;
       }
       closedir(dirp);
       free(paths);
+      free(exec_only);
       return full_path;
     }
     curr_path = strtok(NULL, ":");
   }
   free(full_path);
   free(paths);
+  free(exec_only);
   closedir(dirp);
   return NULL;
 }
@@ -318,47 +444,64 @@ void handle_pwd_command() {
   printf("%s\n", pwd_str);
 }
 
-void handle_cd_command() {
-  if (*ao->args[1] == '\0') {
-    return;
-  } else if (strncmp(ao->args[1], "./", 2) == 0) {
-    char *fixed_arg = strdup(ao->args[1] + 1);
-    char *new_dir = (char *)calloc(1000, sizeof(char));
-    strcat(new_dir, getenv("PWD"));
-    strcat(new_dir, fixed_arg);
-    if (chdir(new_dir) != 0) {
-      printf("cd: %s: No such file or directory\n", ao->args[1]);
-      return;
-    }
-    setenv("PWD", new_dir, 1);
-    return;
-  } else if (strncmp(ao->args[1], "../", 3) == 0) {
-    size_t num_of_levels = 1;
-    char *arg_ptr = ao->args[1] + 3;
-    while (*arg_ptr != '\0' && strncmp(arg_ptr, "../", 3) == 0) {
-      arg_ptr += 3;
-      num_of_levels++;
-    }
-    char *curr_pwd = strdup(getenv("PWD"));
-    char *pwd_ptr = curr_pwd + (strlen(curr_pwd) - 1);
-    for (; num_of_levels > 0; num_of_levels--) {
-      pwd_ptr--;
-      while (*pwd_ptr != '/') {
-        pwd_ptr--;
-      }
-    }
-    size_t length_of_new_pwd = pwd_ptr - curr_pwd;
+bool check_if_directory_exists(char *s) {
+  DIR* dir = opendir(s);
+  if (dir) {
+    return true;
+  } 
+  return false;
+}
 
-    curr_pwd[length_of_new_pwd] = '\0';
-    setenv("PWD", curr_pwd, 1);
-    return;
-  } else if (strncmp(ao->args[1], "~", 1) == 0) {
-    char *home_dir = getenv("HOME");
-    setenv("PWD", home_dir, 1);
-    return;
-  } else if (chdir(ao->args[1]) != 0) {
-    printf("cd: %s: No such file or directory\n", ao->args[1]);
+void handle_cd_command(Cmd_Header *c) {
+  Cd_Command *cd_comm = (Cd_Command *)c;
+  if (cd_comm->txt == NULL) {
     return;
   }
-  setenv("PWD", ao->args[1], 1);
+  if (check_if_directory_exists(cd_comm->txt) == false) {
+    printf("cd: %s: No such file or directory\n", cd_comm->txt);
+    return;
+  }
+  setenv("PWD", cd_comm->txt, 1);
+  /*if (*ao->args[1] == '\0') {*/
+  /*  return;*/
+  /*} else if (strncmp(ao->args[1], "./", 2) == 0) {*/
+  /*  char *fixed_arg = strdup(ao->args[1] + 1);*/
+  /*  char *new_dir = (char *)calloc(1000, sizeof(char));*/
+  /*  strcat(new_dir, getenv("PWD"));*/
+  /*  strcat(new_dir, fixed_arg);*/
+  /*  if (chdir(new_dir) != 0) {*/
+  /*    printf("cd: %s: No such file or directory\n", ao->args[1]);*/
+  /*    return;*/
+  /*  }*/
+  /*  setenv("PWD", new_dir, 1);*/
+  /*  return;*/
+  /*} else if (strncmp(ao->args[1], "../", 3) == 0) {*/
+  /*  size_t num_of_levels = 1;*/
+  /*  char *arg_ptr = ao->args[1] + 3;*/
+  /*  while (*arg_ptr != '\0' && strncmp(arg_ptr, "../", 3) == 0) {*/
+  /*    arg_ptr += 3;*/
+  /*    num_of_levels++;*/
+  /*  }*/
+  /*  char *curr_pwd = strdup(getenv("PWD"));*/
+  /*  char *pwd_ptr = curr_pwd + (strlen(curr_pwd) - 1);*/
+  /*  for (; num_of_levels > 0; num_of_levels--) {*/
+  /*    pwd_ptr--;*/
+  /*    while (*pwd_ptr != '/') {*/
+  /*      pwd_ptr--;*/
+  /*    }*/
+  /*  }*/
+  /*  size_t length_of_new_pwd = pwd_ptr - curr_pwd;*/
+  /**/
+  /*  curr_pwd[length_of_new_pwd] = '\0';*/
+  /*  setenv("PWD", curr_pwd, 1);*/
+  /*  return;*/
+  /*} else if (strncmp(ao->args[1], "~", 1) == 0) {*/
+  /*  char *home_dir = getenv("HOME");*/
+  /*  setenv("PWD", home_dir, 1);*/
+  /*  return;*/
+  /*} else if (chdir(ao->args[1]) != 0) {*/
+  /*  printf("cd: %s: No such file or directory\n", ao->args[1]);*/
+  /*  return;*/
+  /*}*/
+  /*setenv("PWD", ao->args[1], 1);*/
 }

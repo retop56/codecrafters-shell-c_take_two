@@ -13,5 +13,52 @@
 
 #define BUFF_LENGTH 1000
 
+typedef enum {
+  CMD_EXIT,
+  CMD_INVALID,
+  CMD_ECHO,
+  CMD_TYPE,
+  CMD_EXECUTABLE,
+  CMD_PWD,
+  CMD_CD,
+  CMD_COUNT
+} Cmd_Type;
 
 
+typedef struct {
+  Cmd_Type type;
+} Cmd_Header;
+
+typedef struct {
+  Cmd_Header hdr;
+} Exit_Command;
+
+typedef struct {
+  Cmd_Header hdr;
+  char * txt;
+} Invalid_Command;
+
+typedef struct {
+  Cmd_Header hdr;
+  char * txt;
+} Echo_Command;
+
+typedef struct {
+  Cmd_Header hdr;
+  char * txt;
+} Type_Command;
+
+typedef struct {
+  Cmd_Header hdr;
+  char ** args;
+  size_t num_of_args;
+} Executable_Command;
+
+typedef struct {
+  Cmd_Header hdr;
+} Pwd_Command;
+
+typedef struct {
+  Cmd_Header hdr;
+  char * txt;
+} Cd_Command;
