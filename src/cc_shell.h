@@ -41,6 +41,8 @@ typedef struct {
 typedef struct {
   Cmd_Header hdr;
   char * txt;
+  char ** args;
+  size_t num_of_args;
 } Echo_Command;
 
 typedef struct {

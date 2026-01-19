@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include "cc_shell.h"
 struct arg_obj *ao;
+char *input = NULL;
+char *curr_char = NULL;
 
 char *possible_completion_options[] = {"echo", "exit", NULL};
 char *built_in_generator(const char *text, int state);
@@ -217,8 +219,6 @@ char **completion_func(const char *text, int start, int end) {
 
 int main() {
   rl_attempted_completion_function = completion_func;
-  ao = create_arg_obj();
-  char *input;
   while (true) {
     // Wait for user input
     input = readline("$ ");
@@ -226,20 +226,16 @@ int main() {
       free(input);
       break;
     }
+    curr_char = input;
     // Replace \n at end of string with null
     int len_of_input = strlen(input);
     if (len_of_input > 0 && input[len_of_input - 1] == '\n') {
       input[len_of_input - 1] = '\0';
     }
-    /*ao->input = input;*/
-    /*ao->curr_char = input;*/
-    Cmd_Header *cmd = create_command(input);
+    Cmd_Header *cmd = create_command();
     switch (cmd->type) {
       case CMD_EXIT:
         handle_exit_command();
-        break;
-      case CMD_INVALID:
-        handle_invalid_command(cmd);
         break;
       case CMD_ECHO:
         handle_echo_command(cmd);
@@ -247,19 +243,21 @@ int main() {
       case CMD_TYPE:
         handle_type_command(cmd);
         break;
-      case CMD_EXECUTABLE:
-        handle_executable_command(cmd);
-        break;
       case CMD_PWD:
         handle_pwd_command();
         break;
       case CMD_CD:
         handle_cd_command(cmd);
         break;
+      case CMD_EXECUTABLE:
+        handle_executable_command(cmd);
+        break;
+      case CMD_INVALID:
+        handle_invalid_command(cmd);
+        break;
     }
     free(input);
     free(cmd);
   }
-  free(ao);
   return 0;
 }

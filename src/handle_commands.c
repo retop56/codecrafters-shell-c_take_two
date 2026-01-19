@@ -2,39 +2,45 @@
 #include "arg_obj_def.h"
 #include "argparser.h"
 #include "cc_shell.h"
+#include "cmd_arg_parser.h"
 #include <fcntl.h>
 #include <linux/limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 extern struct arg_obj *ao;
+extern char* input;
+extern char* curr_char;
 
 static char *search_for_exec(char *exec_name);
 Cmd_Header *create_exit_command();
-Cmd_Header *create_invalid_command(char *input);
-Cmd_Header *create_echo_command(char *input);
-Cmd_Header *create_type_command(char *input);
-Cmd_Header *create_executable_command(char *input);
+Cmd_Header *create_invalid_command();
+Cmd_Header *create_echo_command();
+Cmd_Header *create_type_command();
+Cmd_Header *create_executable_command();
 Cmd_Header *create_pwd_command();
-Cmd_Header *create_cd_command(char *input);
+Cmd_Header *create_cd_command();
 char **resize_command_args(char **curr_args, int new_arg_size);
 
-Cmd_Header *create_command(char *input) {
+Cmd_Header *create_command() {
   char *possible_exe;
   if (strncmp(input, "exit", 4) == 0) {
     return create_exit_command();
   } else if (strncmp(input, "echo ", 5) == 0) {
-    return create_echo_command(input);
+    curr_char += 5;
+    return create_echo_command();
   } else if (strncmp(input, "type ", 5) == 0) {
-    return create_type_command(input);
+    curr_char += 5;
+    return create_type_command();
   } else if (strncmp(input, "pwd", 3) == 0) {
     return create_pwd_command();
-  } else if(strncmp(input, "cd ", 3) == 0) {
-    return create_cd_command(input);
+  } else if (strncmp(input, "cd ", 3) == 0) {
+    curr_char += 3;
+    return create_cd_command();
   } else if ((possible_exe = search_for_exec(input)) != NULL) {
-    return create_executable_command(input);
+    return create_executable_command();
   } else {
-    return create_invalid_command(input);
+    return create_invalid_command();
   }
   return NULL;
 }
@@ -45,45 +51,36 @@ Cmd_Header *create_exit_command() {
   return (Cmd_Header *)c;
 }
 
-Cmd_Header *create_invalid_command(char *input) {
+Cmd_Header *create_invalid_command() {
   Invalid_Command *c = (Invalid_Command *)malloc(sizeof(Invalid_Command));
   c->hdr.type = CMD_INVALID;
   c->txt = input;
   return (Cmd_Header *)c;
 }
 
-Cmd_Header *create_echo_command(char *input) {
+Cmd_Header *create_echo_command() {
   Echo_Command *c = (Echo_Command *)malloc(sizeof(Echo_Command));
   c->hdr.type = CMD_ECHO;
   c->txt = input + 5;
+  c->args = (char **)malloc(sizeof(char *) * 10);
+  c->num_of_args = add_cmd_args(c->args);
   return (Cmd_Header *)c;
 }
 
-Cmd_Header *create_type_command(char *input) {
+Cmd_Header *create_type_command() {
   Type_Command *c = (Type_Command *)malloc(sizeof(Type_Command));
   c->hdr.type = CMD_TYPE;
   c->txt = input + 5;
   return (Cmd_Header *)c;
 }
 
-Cmd_Header *create_executable_command(char *input) {
+Cmd_Header *create_executable_command() {
   Executable_Command *c =
       (Executable_Command *)malloc(sizeof(Executable_Command));
   c->hdr.type = CMD_EXECUTABLE;
   int arg_size = 10;
-  char **args = (char **)malloc(sizeof(char *) * arg_size);
-  int n = 0;
-  char *curr_tok = strtok(input, " ");
-  while (curr_tok) {
-    args[n++] = curr_tok;
-    if (n == arg_size) {
-      arg_size *= 2;
-      args = resize_command_args(args, arg_size);
-    }
-    curr_tok = strtok(NULL, " ");
-  }
-  c->args = args;
-  c->num_of_args = n;
+  c->args = (char **)malloc(sizeof(char *) * arg_size);
+  c->num_of_args = add_cmd_args(c->args);
   return (Cmd_Header *)c;
 }
 
@@ -93,8 +90,8 @@ Cmd_Header *create_pwd_command() {
   return (Cmd_Header *)c;
 }
 
-Cmd_Header *create_cd_command(char *input) {
-  Cd_Command *c = (Cd_Command *)malloc(sizeof(Cd_Command));  
+Cmd_Header *create_cd_command() {
+  Cd_Command *c = (Cd_Command *)malloc(sizeof(Cd_Command));
   c->hdr.type = CMD_CD;
   c->txt = input + 3;
   return (Cmd_Header *)c;
@@ -116,7 +113,15 @@ void handle_invalid_command(Cmd_Header *c) {
 void handle_exit_command() { exit(0); }
 
 void handle_echo_command(Cmd_Header *c) {
-  printf("%s\n", ((Echo_Command *)c)->txt);
+  Echo_Command *ec = (Echo_Command *)c;
+  for (int i = 0; i < ec->num_of_args; i++) {
+    if (i == 0) {
+      printf("%s", ec->args[i]);
+    } else {
+      printf(" %s", ec->args[i]);
+    }
+  }
+  printf("\n");
 }
 
 void handle_type_command(Cmd_Header *c) {
@@ -130,20 +135,6 @@ void handle_type_command(Cmd_Header *c) {
   } else {
     printf("%s: not found\n", t);
   }
-  /*} else {*/
-  /*  char *exec_name = (char *)malloc(256 * sizeof(char));*/
-  /*  strcpy(exec_name, ao->args[1]);*/
-  /*  char *full_path = search_for_exec(exec_name);*/
-  /*  if (full_path == NULL) {*/
-  /*    printf("%s: not found\n", exec_name);*/
-  /*    free(full_path);*/
-  /*    free(exec_name);*/
-  /*    return;*/
-  /*  }*/
-  /*  printf("%s is %s\n", exec_name, full_path);*/
-  /*  free(full_path);*/
-  /*  free(exec_name);*/
-  /*}*/
 }
 
 void handle_executable_command(Cmd_Header *c) {
@@ -446,10 +437,10 @@ void handle_pwd_command() {
 }
 
 bool check_if_directory_exists(char *s) {
-  DIR* dir = opendir(s);
+  DIR *dir = opendir(s);
   if (dir) {
     return true;
-  } 
+  }
   return false;
 }
 

@@ -15,7 +15,7 @@ static char handle_backslash_char(BKSLSH_MODE bm);
 static void set_redir_type(char *arg);
 
 int times_double_quotes_called = 0;
-char curr_arg[BUFF_LENGTH];
+static char curr_arg[BUFF_LENGTH];
 
 struct arg_obj *create_arg_obj() {
   struct arg_obj *created_ao = malloc(sizeof(struct arg_obj));

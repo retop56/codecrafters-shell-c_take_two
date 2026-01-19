@@ -10,4 +10,4 @@ void handle_pwd_command();
 void handle_cd_command(Cmd_Header *c);
 void handle_program_exec_w_redirect_or_append();
 void handle_program_exec_w_pipe();
-Cmd_Header *create_command(char *input);
+Cmd_Header *create_command();
