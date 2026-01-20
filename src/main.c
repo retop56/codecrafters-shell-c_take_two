@@ -1,4 +1,5 @@
 #include "arg_obj_def.h"
+#include "cmd_arg_parser.h"
 #include "argparser.h"
 #include "handle_commands.h"
 #include <readline/history.h>
@@ -221,18 +222,20 @@ int main() {
   rl_attempted_completion_function = completion_func;
   while (true) {
     // Wait for user input
+    Args *ao = create_args_obj();
     input = readline("$ ");
     if (!input) {
       free(input);
       break;
     }
     curr_char = input;
+    add_cmd_args(ao);
     // Replace \n at end of string with null
     int len_of_input = strlen(input);
     if (len_of_input > 0 && input[len_of_input - 1] == '\n') {
       input[len_of_input - 1] = '\0';
     }
-    Cmd_Header *cmd = create_command();
+    Cmd_Header *cmd = create_command(ao);
     switch (cmd->type) {
       case CMD_EXIT:
         handle_exit_command();

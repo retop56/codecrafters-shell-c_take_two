@@ -1,6 +1,7 @@
 #include "argparser.h"
 #include "arg_obj_def.h"
 #include "cc_shell.h"
+#include "cmd_arg_parser.h"
 #include <stdlib.h>
 #include <string.h>
 

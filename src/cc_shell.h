@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stddef.h>
+#include "cmd_arg_parser.h"
 
 #define BUFF_LENGTH 1000
 
@@ -41,19 +42,17 @@ typedef struct {
 typedef struct {
   Cmd_Header hdr;
   char * txt;
-  char ** args;
-  size_t num_of_args;
+  Args *ao;
 } Echo_Command;
 
 typedef struct {
   Cmd_Header hdr;
-  char * txt;
+  Args *ao;
 } Type_Command;
 
 typedef struct {
   Cmd_Header hdr;
-  char ** args;
-  size_t num_of_args;
+  Args *ao;
 } Executable_Command;
 
 typedef struct {
@@ -62,5 +61,5 @@ typedef struct {
 
 typedef struct {
   Cmd_Header hdr;
-  char * txt;
+  Args *ao;
 } Cd_Command;

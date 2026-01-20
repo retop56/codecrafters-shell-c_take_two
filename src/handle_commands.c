@@ -12,75 +12,60 @@ extern struct arg_obj *ao;
 extern char* input;
 extern char* curr_char;
 
-static char *search_for_exec(char *exec_name);
-Cmd_Header *create_exit_command();
-Cmd_Header *create_invalid_command();
-Cmd_Header *create_echo_command();
-Cmd_Header *create_type_command();
-Cmd_Header *create_executable_command();
-Cmd_Header *create_pwd_command();
-Cmd_Header *create_cd_command();
 char **resize_command_args(char **curr_args, int new_arg_size);
 
-Cmd_Header *create_command() {
+Cmd_Header *create_command(Args *ao) {
   char *possible_exe;
-  if (strncmp(input, "exit", 4) == 0) {
+  if (strncmp(ao->args[0], "exit", 4) == 0) {
     return create_exit_command();
-  } else if (strncmp(input, "echo ", 5) == 0) {
-    curr_char += 5;
-    return create_echo_command();
-  } else if (strncmp(input, "type ", 5) == 0) {
-    curr_char += 5;
-    return create_type_command();
-  } else if (strncmp(input, "pwd", 3) == 0) {
+  } else if (strncmp(ao->args[0], "echo", 4) == 0) {
+    return create_echo_command(ao);
+  } else if (strncmp(ao->args[0], "type", 4) == 0) {
+    return create_type_command(ao);
+  } else if (strncmp(ao->args[0], "pwd", 3) == 0) {
     return create_pwd_command();
-  } else if (strncmp(input, "cd ", 3) == 0) {
-    curr_char += 3;
-    return create_cd_command();
-  } else if ((possible_exe = search_for_exec(input)) != NULL) {
-    return create_executable_command();
+  } else if (strncmp(ao->args[0], "cd", 2) == 0) {
+    return create_cd_command(ao);
+  } else if ((possible_exe = search_for_exec(ao->args[0])) != NULL) {
+    return create_executable_command(ao);
   } else {
     return create_invalid_command();
   }
   return NULL;
 }
 
-Cmd_Header *create_exit_command() {
+static Cmd_Header *create_exit_command() {
   Exit_Command *c = (Exit_Command *)malloc(sizeof(Exit_Command));
   c->hdr.type = CMD_EXIT;
   return (Cmd_Header *)c;
 }
 
-Cmd_Header *create_invalid_command() {
+static Cmd_Header *create_invalid_command() {
   Invalid_Command *c = (Invalid_Command *)malloc(sizeof(Invalid_Command));
   c->hdr.type = CMD_INVALID;
   c->txt = input;
   return (Cmd_Header *)c;
 }
 
-Cmd_Header *create_echo_command() {
+static Cmd_Header *create_echo_command(Args *ao) {
   Echo_Command *c = (Echo_Command *)malloc(sizeof(Echo_Command));
   c->hdr.type = CMD_ECHO;
-  c->txt = input + 5;
-  c->args = (char **)malloc(sizeof(char *) * 10);
-  c->num_of_args = add_cmd_args(c->args);
+  c->ao = ao;
   return (Cmd_Header *)c;
 }
 
-Cmd_Header *create_type_command() {
+static Cmd_Header *create_type_command(Args *ao) {
   Type_Command *c = (Type_Command *)malloc(sizeof(Type_Command));
   c->hdr.type = CMD_TYPE;
-  c->txt = input + 5;
+  c->ao = ao;
   return (Cmd_Header *)c;
 }
 
-Cmd_Header *create_executable_command() {
+static Cmd_Header *create_executable_command(Args *ao) {
   Executable_Command *c =
       (Executable_Command *)malloc(sizeof(Executable_Command));
   c->hdr.type = CMD_EXECUTABLE;
-  int arg_size = 10;
-  c->args = (char **)malloc(sizeof(char *) * arg_size);
-  c->num_of_args = add_cmd_args(c->args);
+  c->ao = ao;
   return (Cmd_Header *)c;
 }
 
@@ -90,23 +75,24 @@ Cmd_Header *create_pwd_command() {
   return (Cmd_Header *)c;
 }
 
-Cmd_Header *create_cd_command() {
+Cmd_Header *create_cd_command(Args *ao) {
   Cd_Command *c = (Cd_Command *)malloc(sizeof(Cd_Command));
   c->hdr.type = CMD_CD;
-  c->txt = input + 3;
+  c->ao = ao;
   return (Cmd_Header *)c;
 }
 
-char **resize_command_args(char **curr_args, int new_arg_size) {
-  char **new_args = realloc(curr_args, (sizeof(char **) * new_arg_size));
-  if (new_args == NULL) {
-    printf("Realloc failed in %s (Line: %d)\n", __FUNCTION__, __LINE__);
-    exit(EXIT_FAILURE);
-  }
-  return new_args;
-}
+/*char **resize_command_args(char **curr_args, int new_arg_size) {*/
+/*  char **new_args = realloc(curr_args, (sizeof(char **) * new_arg_size));*/
+/*  if (new_args == NULL) {*/
+/*    printf("Realloc failed in %s (Line: %d)\n", __FUNCTION__, __LINE__);*/
+/*    exit(EXIT_FAILURE);*/
+/*  }*/
+/*  return new_args;*/
+/*}*/
 
 void handle_invalid_command(Cmd_Header *c) {
+  Invalid_Command *ic = (Invalid_Command *)c;
   printf("%s: command not found\n", ((Invalid_Command *)c)->txt);
 }
 
@@ -114,26 +100,26 @@ void handle_exit_command() { exit(0); }
 
 void handle_echo_command(Cmd_Header *c) {
   Echo_Command *ec = (Echo_Command *)c;
-  for (int i = 0; i < ec->num_of_args; i++) {
-    if (i == 0) {
-      printf("%s", ec->args[i]);
+  for (int i = 1; i < ec->ao->size; i++) {
+    if (i == 1) {
+      printf("%s", ec->ao->args[i]);
     } else {
-      printf(" %s", ec->args[i]);
+      printf(" %s", ec->ao->args[i]);
     }
   }
   printf("\n");
 }
 
 void handle_type_command(Cmd_Header *c) {
-  char *t = ((Type_Command *)c)->txt;
+  Type_Command *tc = (Type_Command *)c;
   char *possible_exe;
-  if (strcmp(t, "echo") == 0 || strcmp(t, "exit") == 0 ||
-      strcmp(t, "type") == 0 || strcmp(t, "pwd") == 0) {
-    printf("%s is a shell builtin\n", t);
-  } else if ((possible_exe = search_for_exec(t)) != NULL) {
-    printf("%s is %s\n", t, possible_exe);
+  if (strcmp(tc->ao->args[1], "echo") == 0 || strcmp(tc->ao->args[1], "exit") == 0 ||
+      strcmp(tc->ao->args[1], "type") == 0 || strcmp(tc->ao->args[1], "pwd") == 0) {
+    printf("%s is a shell builtin\n", tc->ao->args[1]);
+  } else if ((possible_exe = search_for_exec(tc->ao->args[1])) != NULL) {
+    printf("%s is %s\n", tc->ao->args[1], possible_exe);
   } else {
-    printf("%s: not found\n", t);
+    printf("%s: not found\n", tc->ao->args[1]);
   }
 }
 
@@ -150,37 +136,38 @@ void handle_executable_command(Cmd_Header *c) {
      * Make sure last argument in list is NULL to satisfy requirements
      * of execvp
      */
-    exec->args[exec->num_of_args] = NULL;
-    execvp(exec->args[0], exec->args);
+    exec->ao->args[exec->ao->size] = NULL;
+    execvp(exec->ao->args[0], exec->ao->args);
     perror("execvp");
     exit(EXIT_FAILURE);
   }
   wait(&p);
 }
-void handle_program_execution() {
-  char *full_path = search_for_exec(ao->args[0]);
-  if (full_path == NULL) {
-    printf("%s: command not found\n", ao->args[0]);
-    return;
-  }
-  pid_t p = fork();
-  switch (p) {
-  case -1:
-    fprintf(stderr, "Fork failed!\n");
-    exit(EXIT_FAILURE);
-  case 0:
-    /*
-     * Make sure last argument in list is NULL to satisfy requirements
-     * of execvp
-     */
-    ao->args[ao->size] = (char *)NULL;
-    execvp(full_path, ao->args);
-    break;
-  default:
-    wait(&p);
-    free(full_path);
-  }
-}
+
+/*void handle_program_execution() {*/
+/*  char *full_path = search_for_exec(ao->args[0]);*/
+/*  if (full_path == NULL) {*/
+/*    printf("%s: command not found\n", ao->args[0]);*/
+/*    return;*/
+/*  }*/
+/*  pid_t p = fork();*/
+/*  switch (p) {*/
+/*  case -1:*/
+/*    fprintf(stderr, "Fork failed!\n");*/
+/*    exit(EXIT_FAILURE);*/
+/*  case 0:*/
+/*    /**/
+/*     * Make sure last argument in list is NULL to satisfy requirements*/
+/*     * of execvp*/
+/*     */
+/*    ao->args[ao->size] = (char *)NULL;*/
+/*    execvp(full_path, ao->args);*/
+/*    break;*/
+/*  default:*/
+/*    wait(&p);*/
+/*    free(full_path);*/
+/*  }*/
+/*}*/
 
 void handle_program_exec_w_pipe() {
   size_t i = 0;
@@ -446,13 +433,13 @@ bool check_if_directory_exists(char *s) {
 
 void handle_cd_command(Cmd_Header *c) {
   Cd_Command *cd_comm = (Cd_Command *)c;
-  if (cd_comm->txt == NULL) {
+  if (cd_comm->ao->args[0] == NULL) {
     return;
   }
   char new_dir[PATH_MAX] = {0};
-  if (strncmp(cd_comm->txt, "./", 2) == 0) {
+  if (strncmp(cd_comm->ao->args[1], "./", 2) == 0) {
     strcat(new_dir, getenv("PWD"));
-    strcat(new_dir, cd_comm->txt + 1);
+    strcat(new_dir, cd_comm->ao->args[1] + 1);
     if (check_if_directory_exists(new_dir) == false) {
       printf("cd: %s: No such file or directory\n", new_dir);
       return;
@@ -460,9 +447,9 @@ void handle_cd_command(Cmd_Header *c) {
     setenv("PWD", new_dir, 1);
     return;
   }
-  if (strncmp(cd_comm->txt, "../", 3) == 0) {
+  if (strncmp(cd_comm->ao->args[1], "../", 3) == 0) {
     int count = 0;
-    char *s = cd_comm->txt;
+    char *s = cd_comm->ao->args[1];
     while (strncmp(s, "../", 3) == 0) {
       count++;
       s += 3;
@@ -485,16 +472,16 @@ void handle_cd_command(Cmd_Header *c) {
     }
     return;
   }
-  if (strncmp(cd_comm->txt, "~", 1) == 0) {
+  if (strncmp(cd_comm->ao->args[1], "~", 1) == 0) {
     char *h = getenv("HOME");
     if (h != NULL) {
       setenv("PWD", h, 1);
     }
     return;
   }
-  if (check_if_directory_exists(cd_comm->txt) == false) {
-    printf("cd: %s: No such file or directory\n", cd_comm->txt);
+  if (check_if_directory_exists(cd_comm->ao->args[1]) == false) {
+    printf("cd: %s: No such file or directory\n", cd_comm->ao->args[1]);
     return;
   }
-  setenv("PWD", cd_comm->txt, 1);
+  setenv("PWD", cd_comm->ao->args[1], 1);
 }

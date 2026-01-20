@@ -8,10 +8,20 @@ extern char *curr_char;
 static char **args;
 static char curr_arg[BUFF_LENGTH];
 
-int add_cmd_args(char **a) {
+Args *create_args_obj() {
+  Args *ao = (Args *)malloc(sizeof(Args));
+  ao->size = 0;
+  ao->capacity = 10;
+  ao->args = (char **)calloc(ao->capacity, sizeof(char *));
+  if (ao->args == NULL) {
+    fprintf(stderr, "calloc failed! (%s: Line %d)\n", __FUNCTION__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+  return ao;
+}
+
+void add_cmd_args(Args *ao) {
   char *received_arg;
-  int n = 0;
-  args = a;
 
   while (*curr_char != '\0') {
     if (strncmp(curr_char, "\'", 1) == 0) {
@@ -31,11 +41,10 @@ int add_cmd_args(char **a) {
       received_arg = check_empty_quoted_arg(received_arg);
     }
     skip_past_spaces();
-    args[n++] = received_arg;
+    /*args[n++] = received_arg;*/
+    ao->args[ao->size++] = received_arg;
     curr_arg[0] = '\0';
   }
-
-  return n;
 }
 
 static char *get_normal_arg(void) {

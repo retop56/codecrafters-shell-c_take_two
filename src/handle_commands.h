@@ -1,5 +1,18 @@
+#pragma once
+
 #include "arg_obj_def.h"
 #include "cc_shell.h"
+#include "cmd_arg_parser.h"
+
+static char *search_for_exec(char *exec_name);
+static Cmd_Header *create_exit_command();
+static Cmd_Header *create_echo_command(Args *ao);
+static Cmd_Header *create_type_command(Args *ao);
+static Cmd_Header *create_invalid_command();
+static Cmd_Header *create_executable_command(Args *ao);
+static Cmd_Header *create_pwd_command();
+static Cmd_Header *create_cd_command(Args *ao);
+
 void handle_exit_command();
 void handle_invalid_command(Cmd_Header *c);
 void handle_echo_command(Cmd_Header *c);
@@ -10,4 +23,4 @@ void handle_pwd_command();
 void handle_cd_command(Cmd_Header *c);
 void handle_program_exec_w_redirect_or_append();
 void handle_program_exec_w_pipe();
-Cmd_Header *create_command();
+Cmd_Header *create_command(Args *ao);
