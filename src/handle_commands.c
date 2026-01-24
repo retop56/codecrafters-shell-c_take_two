@@ -3,20 +3,23 @@
 #include "argparser.h"
 #include "cc_shell.h"
 #include "cmd_arg_parser.h"
+#include "shell_types.h"
 #include <fcntl.h>
 #include <linux/limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 extern struct arg_obj *ao;
-extern char* input;
-extern char* curr_char;
+extern char *input;
+extern char *curr_char;
 
 char **resize_command_args(char **curr_args, int new_arg_size);
 
 Cmd_Header *create_command(Args *ao) {
   char *possible_exe;
-  if (strncmp(ao->args[0], "exit", 4) == 0) {
+  if (ao->redir_type != NO_REDIR) {
+    return create_redir_command(ao);
+  } else if (strncmp(ao->args[0], "exit", 4) == 0) {
     return create_exit_command();
   } else if (strncmp(ao->args[0], "echo", 4) == 0) {
     return create_echo_command(ao);
@@ -65,6 +68,7 @@ static Cmd_Header *create_executable_command(Args *ao) {
   Executable_Command *c =
       (Executable_Command *)malloc(sizeof(Executable_Command));
   c->hdr.type = CMD_EXECUTABLE;
+  c->redir_type = check_if_redir_in_exec(ao);
   c->ao = ao;
   return (Cmd_Header *)c;
 }
@@ -80,6 +84,20 @@ Cmd_Header *create_cd_command(Args *ao) {
   c->hdr.type = CMD_CD;
   c->ao = ao;
   return (Cmd_Header *)c;
+}
+
+Cmd_Header *create_redir_command(Args *ao) {
+  Redir_Command *c = (Redir_Command *)malloc(sizeof(Redir_Command));
+  c->hdr.type = CMD_REDIR;
+  int redir_arg_num = 0;
+  for (int i = 0; i < ao->size; i++) {
+    if (strncmp(ao->args[i], ">", 1) == 0) {
+      break;
+    }
+    redir_arg_num++;
+  }
+  printf("redir_arg_num: %d\n", redir_arg_num);
+  exit(EXIT_FAILURE);
 }
 
 /*char **resize_command_args(char **curr_args, int new_arg_size) {*/
@@ -113,8 +131,10 @@ void handle_echo_command(Cmd_Header *c) {
 void handle_type_command(Cmd_Header *c) {
   Type_Command *tc = (Type_Command *)c;
   char *possible_exe;
-  if (strcmp(tc->ao->args[1], "echo") == 0 || strcmp(tc->ao->args[1], "exit") == 0 ||
-      strcmp(tc->ao->args[1], "type") == 0 || strcmp(tc->ao->args[1], "pwd") == 0) {
+  if (strcmp(tc->ao->args[1], "echo") == 0 ||
+      strcmp(tc->ao->args[1], "exit") == 0 ||
+      strcmp(tc->ao->args[1], "type") == 0 ||
+      strcmp(tc->ao->args[1], "pwd") == 0) {
     printf("%s is a shell builtin\n", tc->ao->args[1]);
   } else if ((possible_exe = search_for_exec(tc->ao->args[1])) != NULL) {
     printf("%s is %s\n", tc->ao->args[1], possible_exe);
@@ -125,6 +145,10 @@ void handle_type_command(Cmd_Header *c) {
 
 void handle_executable_command(Cmd_Header *c) {
   Executable_Command *exec = (Executable_Command *)c;
+  if (exec->redir_type != NO_REDIR) {
+    handle_program_exec_w_redirect_or_append(exec);
+    return;
+  }
   pid_t p = fork();
   switch (p) {
   case -1:
@@ -144,6 +168,15 @@ void handle_executable_command(Cmd_Header *c) {
   wait(&p);
 }
 
+redir_t check_if_redir_in_exec(Args *ao) {
+  for (int i = 0; i < ao->size; i++) {
+    if (strncmp(ao->args[i], ">", 1) == 0 ||
+        strncmp(ao->args[i], "1>", 2) == 0) {
+      return STD_OUT;
+    }
+  }
+  return NO_REDIR;
+}
 /*void handle_program_execution() {*/
 /*  char *full_path = search_for_exec(ao->args[0]);*/
 /*  if (full_path == NULL) {*/
@@ -234,53 +267,57 @@ void handle_program_exec_w_pipe() {
   waitpid(second_fork, NULL, 0);
 }
 
-void handle_program_exec_w_redirect_or_append() {
+void handle_program_exec_w_redirect_or_append(Executable_Command *exec) {
   size_t i = 0;
   size_t size_of_full_command = 0;
-  switch (ao->redir_type) {
+  switch (exec->redir_type) {
   case STD_OUT:
-    for (; i < ao->size; i++) {
-      if (strncmp(ao->args[i], ">", 1) == 0 ||
-          strncmp(ao->args[i], "1>", 2) == 0) {
+    for (; i < exec->ao->size; i++) {
+      if (strncmp(exec->ao->args[i], ">", 1) == 0 ||
+          strncmp(exec->ao->args[i], "1>", 2) == 0) {
         break;
       }
-      size_of_full_command += strlen(ao->args[i]);
-    }
-    break;
-  case STD_ERR:
-    for (; i < ao->size; i++) {
-      if (strncmp(ao->args[i], "2>", 2) == 0) {
-        break;
-      }
-      size_of_full_command += strlen(ao->args[i]);
+      size_of_full_command += strlen(exec->ao->args[i]);
     }
     break;
   case APPEND_STD_OUT:
-    for (; i < ao->size; i++) {
-      if (strncmp(ao->args[i], ">>", 2) == 0 ||
-          strncmp(ao->args[i], "1>>", 3) == 0) {
-        break;
-      }
-      size_of_full_command += strlen(ao->args[i]);
-    }
-    break;
+    printf("Not yet: APPEND_STD_OUT\n");
+    exit(EXIT_FAILURE);
+  /*  for (; i < ao->size; i++) {*/
+  /*    if (strncmp(ao->args[i], ">>", 2) == 0 ||*/
+  /*        strncmp(ao->args[i], "1>>", 3) == 0) {*/
+  /*      break;*/
+  /*    }*/
+  /*    size_of_full_command += strlen(ao->args[i]);*/
+  /*  }*/
+  /*  break;*/
+  /*case STD_ERR:*/
+  /*  for (; i < ao->size; i++) {*/
+  /*    if (strncmp(ao->args[i], "2>", 2) == 0) {*/
+  /*      break;*/
+  /*    }*/
+  /*    size_of_full_command += strlen(ao->args[i]);*/
+  /*  }*/
+  /*  break;*/
   case APPEND_STD_ERR:
-    for (; i < ao->size; i++) {
-      if (strncmp(ao->args[i], "2>>", 3) == 0) {
-        break;
-      }
-      size_of_full_command += strlen(ao->args[i]);
-    }
-    break;
+    printf("Not yet: APPEND_STD_ERR\n");
+    exit(EXIT_FAILURE);
+  /*  for (; i < ao->size; i++) {*/
+  /*    if (strncmp(ao->args[i], "2>>", 3) == 0) {*/
+  /*      break;*/
+  /*    }*/
+  /*    size_of_full_command += strlen(ao->args[i]);*/
+  /*  }*/
+  /*  break;*/
   case NO_REDIR:
-    fprintf(stderr, "ao->redir_type is INITIAL_VAL for some reason \n");
+    fprintf(stderr, "ao->redir_type is NO_REDIR for some reason \n");
     break;
   }
 
   size_of_full_command += i; // For spaces between each command;
-  if (i == ao->size) {
+  if (i == exec->ao->size) {
     char *err_line;
-    switch (ao->redir_type) {
+    switch (exec->redir_type) {
     case STD_OUT:
       err_line = "Unable to find '>' or '1>' operator in ao->args!\n";
       break;
@@ -301,13 +338,13 @@ void handle_program_exec_w_redirect_or_append() {
   }
   char *full_command = (char *)malloc(sizeof(char) * size_of_full_command + 1);
   full_command[0] = '\0';
-  strcat(full_command, ao->args[0]);
+  strcat(full_command, exec->ao->args[0]);
   for (size_t x = 1; x < i; x++) {
     strcat(full_command, " ");
-    strcat(full_command, ao->args[x]);
+    strcat(full_command, exec->ao->args[x]);
   }
   char output_buff[BUFF_LENGTH] = {0};
-  if (ao->redir_type == STD_OUT || ao->redir_type == APPEND_STD_OUT) {
+  if (exec->redir_type == STD_OUT || exec->redir_type == APPEND_STD_OUT) {
     FILE *cmd_f_ptr = popen(full_command, "r");
     if (cmd_f_ptr == NULL) {
       fprintf(stderr, "popen failed on line %d in %s\n", __LINE__,
@@ -315,10 +352,10 @@ void handle_program_exec_w_redirect_or_append() {
       exit(EXIT_FAILURE);
     }
     FILE *output_file;
-    if (ao->redir_type == STD_OUT) {
-      output_file = fopen(ao->args[i + 1], "w");
+    if (exec->redir_type == STD_OUT) {
+      output_file = fopen(exec->ao->args[i + 1], "w");
     } else {
-      output_file = fopen(ao->args[i + 1], "a");
+      output_file = fopen(exec->ao->args[i + 1], "a");
     }
     if (output_file == NULL) {
       fprintf(stderr, "fopen failed on line %d in %s\n", __LINE__,
@@ -335,10 +372,10 @@ void handle_program_exec_w_redirect_or_append() {
     return;
   } else if (ao->redir_type == STD_ERR || ao->redir_type == APPEND_STD_ERR) {
     int fd;
-    if (ao->redir_type == STD_ERR) {
-      fd = open(ao->args[i + 1], O_CREAT | O_WRONLY);
+    if (exec->redir_type == STD_ERR) {
+      fd = open(exec->ao->args[i + 1], O_CREAT | O_WRONLY);
     } else {
-      fd = open(ao->args[i + 1], O_CREAT | O_APPEND | O_WRONLY);
+      fd = open(exec->ao->args[i + 1], O_CREAT | O_APPEND | O_WRONLY);
     }
     if (fd == -1) {
       perror("open");
@@ -366,8 +403,8 @@ void handle_program_exec_w_redirect_or_append() {
 
 char *search_for_exec(char *exec_input) {
   char *full_path = (char *)malloc(PATH_MAX * sizeof(char));
-  char *exec_only = strdup(exec_input);
-  exec_only = strtok(exec_only, " ");
+  /*char *exec_only = strdup(exec_input);*/
+  /*exec_only = strtok(exec_only, " ");*/
   char *paths = strdup(getenv("PATH"));
   if (paths == NULL) {
     printf("Unable to get 'PATH' environment variable!\n");
@@ -386,30 +423,28 @@ char *search_for_exec(char *exec_input) {
       continue;
     }
     struct dirent *pDirent;
-    int len_exec_name = strlen(exec_only);
+    int len_exec_name = strlen(exec_input);
     // Loop through every entry in directory
     while ((pDirent = readdir(dirp)) != NULL) {
-      if (strncmp(exec_only, pDirent->d_name, len_exec_name) != 0) {
+      if (strncmp(exec_input, pDirent->d_name, len_exec_name) != 0) {
         // Didn't find matching filename, check next dirent
         continue;
       }
       // Found matching file, now need to check if it's executable
       sprintf(full_path, "%s/%s", curr_path,
-              exec_only); // Construct full path name
+              exec_input); // Construct full path name
       if ((access(full_path, X_OK)) != 0) {
         // File not executable, check next dirent
         continue;
       }
       closedir(dirp);
       free(paths);
-      free(exec_only);
       return full_path;
     }
     curr_path = strtok(NULL, ":");
   }
   free(full_path);
   free(paths);
-  free(exec_only);
   closedir(dirp);
   return NULL;
 }

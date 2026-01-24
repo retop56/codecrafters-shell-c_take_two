@@ -11,8 +11,10 @@
 #include <unistd.h>
 #include <stddef.h>
 #include "cmd_arg_parser.h"
+#include "shell_types.h"
 
 #define BUFF_LENGTH 1000
+
 
 typedef enum {
   CMD_EXIT,
@@ -22,9 +24,9 @@ typedef enum {
   CMD_EXECUTABLE,
   CMD_PWD,
   CMD_CD,
+  CMD_REDIR,
   CMD_COUNT
 } Cmd_Type;
-
 
 typedef struct {
   Cmd_Type type;
@@ -53,6 +55,7 @@ typedef struct {
 typedef struct {
   Cmd_Header hdr;
   Args *ao;
+  redir_t redir_type; 
 } Executable_Command;
 
 typedef struct {
@@ -63,3 +66,11 @@ typedef struct {
   Cmd_Header hdr;
   Args *ao;
 } Cd_Command;
+
+typedef struct {
+  Cmd_Header hdr;
+  Cmd_Header* command;
+  char * filename;
+  redir_t redir_type;
+  int redir_arg_num;
+} Redir_Command;

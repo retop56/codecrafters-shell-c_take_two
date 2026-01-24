@@ -17,6 +17,7 @@ Args *create_args_obj() {
     fprintf(stderr, "calloc failed! (%s: Line %d)\n", __FUNCTION__, __LINE__);
     exit(EXIT_FAILURE);
   }
+  ao->redir_type = NO_REDIR;
   return ao;
 }
 
@@ -42,6 +43,9 @@ void add_cmd_args(Args *ao) {
     }
     skip_past_spaces();
     /*args[n++] = received_arg;*/
+    if (strncmp(received_arg, ">", 1) == 0) {
+      ao->redir_type = STD_OUT;
+    }
     ao->args[ao->size++] = received_arg;
     curr_arg[0] = '\0';
   }
@@ -165,6 +169,7 @@ static char handle_backslash_char(BKSLSH_MODE bm) {
             __LINE__);
     exit(EXIT_FAILURE);
   }
+  char possible_return_char;
   switch (bm) {
   case OUTSIDE_QUOTES:
     curr_char++;
@@ -185,8 +190,9 @@ static char handle_backslash_char(BKSLSH_MODE bm) {
       curr_char++;
       return '\\';
     default:
-      fprintf(stderr, "Failed switch block in %s\n", __FUNCTION__);
-      exit(EXIT_FAILURE);
+      possible_return_char = *curr_char;
+      curr_char++;
+      return possible_return_char;
     }
   case INSIDE_DOUBLE_QUOTES:
     curr_char++;

@@ -1,15 +1,7 @@
 #pragma once
 
-typedef enum Backslash_Mode{ 
-  INSIDE_DOUBLE_QUOTES,
-  OUTSIDE_QUOTES
-}BKSLSH_MODE;
+#include "shell_types.h"
 
-typedef struct ao{
-  char **args;
-  int size;
-  int capacity;
-} Args;
 
 Args *create_args_obj();
 void add_cmd_args(Args *ao);
