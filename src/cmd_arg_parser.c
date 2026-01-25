@@ -6,7 +6,8 @@ extern char *input;
 extern char *curr_char;
 
 static char **args;
-static char curr_arg[BUFF_LENGTH];
+static char curr_arg[BUFF_LENGTH] = {0};
+static size_t count = 0;
 
 Args *create_args_obj() {
   Args *ao = (Args *)malloc(sizeof(Args));
@@ -25,11 +26,15 @@ void add_cmd_args(Args *ao) {
   char *received_arg;
 
   while (*curr_char != '\0') {
+    count = 0;
     if (strncmp(curr_char, "\'", 1) == 0) {
-      received_arg = get_single_quote_arg();
+      /*received_arg = get_single_quote_arg();*/
+      get_single_quote_arg();
       if (strncmp(curr_char, "\'", 1) == 0) {
-        received_arg =
-            skip_past_adjacent_quotes_and_combine(received_arg, '\'');
+        /*received_arg =*/
+            /*skip_past_adjacent_quotes_and_combine(received_arg, '\'');*/
+        /*skip_past_adjacent_quotes_and_combine('\'');*/
+        get_single_quote_arg();
       }
     } else if (strncmp(curr_char, "\"", 1) == 0) {
       received_arg = get_double_quote_arg();
@@ -38,21 +43,27 @@ void add_cmd_args(Args *ao) {
             skip_past_adjacent_quotes_and_combine(received_arg, '\"');
       }
     } else {
-      received_arg = get_normal_arg();
-      received_arg = check_empty_quoted_arg(received_arg);
+      /*received_arg = get_normal_arg();*/
+      /*received_arg = check_empty_quoted_arg(received_arg);*/
+      get_normal_arg();
     }
     skip_past_spaces();
     /*args[n++] = received_arg;*/
-    if (strncmp(received_arg, ">", 1) == 0) {
+    if (strncmp(received_arg, ">", 1) == 0 ||
+        strncmp(received_arg, "1>", 2) == 0) {
       ao->redir_type = STD_OUT;
     }
+    received_arg = strdup(curr_arg);
+    if (received_arg == NULL) {
+      perror("strdup");
+      exit(EXIT_FAILURE);
+    }
     ao->args[ao->size++] = received_arg;
-    curr_arg[0] = '\0';
+    memset(curr_arg, 0, BUFF_LENGTH);
   }
 }
 
 static char *get_normal_arg(void) {
-  size_t count = 0;
   while (*curr_char != '\0' && *curr_char != ' ' /*&& *curr_char != '\'' &&
          *curr_char != '\"'*/) {
     if (*curr_char == '\\') {
@@ -62,26 +73,27 @@ static char *get_normal_arg(void) {
     } else if (empty_double_quotes_in_normal_arg()) {
       curr_char += 2;
     }else if (start_of_single_quoted_text()) {
-      curr_char++; /* skip past first single quote */
-      while (*curr_char != '\'' && *curr_char != '\0') {
-        curr_arg[count++] = *curr_char++;
-      }
-      if (*curr_char == '\'') {
-        curr_char++; /* skip past second single quote */
-      }
+      /*curr_char++; /* skip past first single quote */
+      /*while (*curr_char != '\'' && *curr_char != '\0') {*/
+        /*curr_arg[count++] = *curr_char++;*/
+      /*}*/
+      /*if (*curr_char == '\'') {*/
+        /*curr_char++; /* skip past second single quote */
+      /*}*/
+      get_single_quote_arg();
     } else if (start_of_double_quote_text()) {
-      curr_char++; /* skip past first double quote */
-      while (*curr_char != '\"' && *curr_char != '\0') {
-        curr_arg[count++] = *curr_char++;
-      }
-      if (*curr_char == '\"') {
-        curr_char++; /* skip past second double quote */
-      }
+    /*  curr_char++; /* skip past first double quote */
+    /*  while (*curr_char != '\"' && *curr_char != '\0') {*/
+    /*    curr_arg[count++] = *curr_char++;*/
+    /*  }*/
+    /*  if (*curr_char == '\"') {*/
+    /*    curr_char++; /* skip past second double quote */
+    /*  }*/
+      get_double_quote_arg();
     } else {
       curr_arg[count++] = *curr_char++;
     }
   }
-  curr_arg[count] = '\0';
   char *new_arg = strndup(curr_arg, count);
   if (new_arg == NULL) {
     fprintf(stderr, "strndup failed at line %d in %s\n", (__LINE__)-2,
@@ -103,7 +115,7 @@ static bool start_of_single_quoted_text(void) {
 }
 
 static bool start_of_double_quote_text(void) {
-  return strncmp(curr_char, "\'", 1) == 0;
+  return strncmp(curr_char, "\"", 1) == 0;
 }
 
 static void skip_past_spaces(void) {
@@ -114,11 +126,11 @@ static void skip_past_spaces(void) {
 
 static char *get_single_quote_arg(void) {
   curr_char++; /* Skip past first single quote */
-  size_t count = 0;
+  /*size_t count = 0;*/
   while (*curr_char != '\0' && *curr_char != '\'') {
     curr_arg[count++] = *curr_char++;
   }
-  curr_arg[count] = '\0';
+  /*curr_arg[count] = '\0';*/
   if (*curr_char == '\'') { /* Skip past second single quote */
     curr_char++;
   }
@@ -132,7 +144,7 @@ static char *get_single_quote_arg(void) {
 
 static char *get_double_quote_arg(void) {
   curr_char++; /* Skip past first double quote */
-  size_t count = 0;
+  /*size_t count = 0;*/
   while (*curr_char != '\0' && *curr_char != '\"') {
     if (*curr_char == '\\') {
       curr_arg[count++] = handle_backslash_char(INSIDE_DOUBLE_QUOTES);
@@ -157,7 +169,7 @@ static char *get_double_quote_arg(void) {
       curr_arg[count++] = *curr_char++;
     }
   }
-  curr_arg[count] = '\0';
+  /*curr_arg[count] = '\0';*/
   char *new_arg = strndup(curr_arg, count);
   if (new_arg == NULL) {
     fprintf(stderr, "strndup failed at line %d in %s\n", (__LINE__)-2,
