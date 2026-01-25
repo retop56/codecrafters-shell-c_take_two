@@ -53,10 +53,30 @@ void add_cmd_args(Args *ao) {
 
 static char *get_normal_arg(void) {
   size_t count = 0;
-  while (*curr_char != '\0' && *curr_char != ' ' && *curr_char != '\'' &&
-         *curr_char != '\"') {
+  while (*curr_char != '\0' && *curr_char != ' ' /*&& *curr_char != '\'' &&
+         *curr_char != '\"'*/) {
     if (*curr_char == '\\') {
       curr_arg[count++] = handle_backslash_char(OUTSIDE_QUOTES);
+    } else if (empty_single_quotes_in_normal_arg()) {
+      curr_char += 2;
+    } else if (empty_double_quotes_in_normal_arg()) {
+      curr_char += 2;
+    }else if (start_of_single_quoted_text()) {
+      curr_char++; /* skip past first single quote */
+      while (*curr_char != '\'' && *curr_char != '\0') {
+        curr_arg[count++] = *curr_char++;
+      }
+      if (*curr_char == '\'') {
+        curr_char++; /* skip past second single quote */
+      }
+    } else if (start_of_double_quote_text()) {
+      curr_char++; /* skip past first double quote */
+      while (*curr_char != '\"' && *curr_char != '\0') {
+        curr_arg[count++] = *curr_char++;
+      }
+      if (*curr_char == '\"') {
+        curr_char++; /* skip past second double quote */
+      }
     } else {
       curr_arg[count++] = *curr_char++;
     }
@@ -70,6 +90,22 @@ static char *get_normal_arg(void) {
   return new_arg;
 }
 
+static bool empty_single_quotes_in_normal_arg(void) {
+  return strncmp(curr_char, "\'\'", 2) == 0;
+}
+
+static bool empty_double_quotes_in_normal_arg(void) {
+  return strncmp(curr_char, "\"\"", 2) == 0;
+}
+
+static bool start_of_single_quoted_text(void) {
+  return strncmp(curr_char, "\'", 1) == 0;
+}
+
+static bool start_of_double_quote_text(void) {
+  return strncmp(curr_char, "\'", 1) == 0;
+}
+
 static void skip_past_spaces(void) {
   while (*curr_char == ' ') {
     curr_char++;
@@ -80,8 +116,8 @@ static char *get_single_quote_arg(void) {
   curr_char++; /* Skip past first single quote */
   size_t count = 0;
   while (*curr_char != '\0' && *curr_char != '\'') {
-      curr_arg[count++] = *curr_char++;
-    }
+    curr_arg[count++] = *curr_char++;
+  }
   curr_arg[count] = '\0';
   if (*curr_char == '\'') { /* Skip past second single quote */
     curr_char++;
