@@ -91,13 +91,28 @@ Cmd_Header *create_redir_command(Args *ao) {
   c->hdr.type = CMD_REDIR;
   int redir_arg_num = 0;
   for (int i = 0; i < ao->size; i++) {
-    if (strncmp(ao->args[i], ">", 1) == 0) {
+    if (strncmp(ao->args[i], ">", 1) == 0 ||
+        strncmp(ao->args[i], "1>", 2) == 0) {
       break;
     }
     redir_arg_num++;
   }
-  printf("redir_arg_num: %d\n", redir_arg_num);
-  exit(EXIT_FAILURE);
+  /*printf("redir_arg_num: %d\n", redir_arg_num);*/
+  /*exit(EXIT_FAILURE);*/
+  Args *new_args = create_args_obj();
+  new_args->size = redir_arg_num;
+  for (int i = 0; i < redir_arg_num; i++) {
+     new_args->args[i] = ao->args[i];
+  }
+  Cmd_Header *left_command = create_command(new_args);
+  if (left_command == NULL) {
+    fprintf(stderr, "Unable to get left-side command in %s! \n", __FUNCTION__);
+    exit(EXIT_FAILURE);
+  } 
+  c->command = left_command;
+  c->filename = ao->args[redir_arg_num + 1];
+  c->redir_type = check_if_redir_in_exec(ao);
+  return (Cmd_Header *) c;
 }
 
 /*char **resize_command_args(char **curr_args, int new_arg_size) {*/

@@ -240,11 +240,17 @@ int main() {
       case CMD_EXIT:
         handle_exit_command();
         break;
+      case CMD_INVALID:
+        handle_invalid_command(cmd);
+        break;
       case CMD_ECHO:
         handle_echo_command(cmd);
         break;
       case CMD_TYPE:
         handle_type_command(cmd);
+        break;
+      case CMD_EXECUTABLE:
+        handle_executable_command(cmd);
         break;
       case CMD_PWD:
         handle_pwd_command();
@@ -252,11 +258,9 @@ int main() {
       case CMD_CD:
         handle_cd_command(cmd);
         break;
-      case CMD_EXECUTABLE:
-        handle_executable_command(cmd);
-        break;
-      case CMD_INVALID:
-        handle_invalid_command(cmd);
+      case CMD_REDIR:
+        printf("Got redir command!\n");
+        exit(EXIT_FAILURE);
         break;
     }
     free(input);
