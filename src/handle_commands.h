@@ -17,6 +17,7 @@ static Cmd_Header *create_cd_command(Args *ao);
 static Cmd_Header *create_redir_command(Args *ao);
 static redir_t check_if_redir_in_exec(Args *ao);
 
+void handle_command(Cmd_Header* cmd);
 void handle_exit_command();
 void handle_invalid_command(Cmd_Header *c);
 void handle_echo_command(Cmd_Header *c);
@@ -25,5 +26,6 @@ void handle_executable_command(Cmd_Header *c);
 void handle_program_execution();
 void handle_pwd_command();
 void handle_cd_command(Cmd_Header *c);
+void handle_redir_command(Cmd_Header *c);
 void handle_program_exec_w_redirect_or_append(Executable_Command *exec);
 void handle_program_exec_w_pipe();

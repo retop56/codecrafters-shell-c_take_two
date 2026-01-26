@@ -37,6 +37,41 @@ Cmd_Header *create_command(Args *ao) {
   return NULL;
 }
 
+void handle_command(Cmd_Header *cmd) {
+  switch (cmd->type) {
+  case CMD_EXIT:
+    handle_exit_command();
+    break;
+  case CMD_INVALID:
+    handle_invalid_command(cmd);
+    break;
+  case CMD_ECHO:
+    handle_echo_command(cmd);
+    break;
+  case CMD_TYPE:
+    handle_type_command(cmd);
+    break;
+  case CMD_EXECUTABLE:
+    handle_executable_command(cmd);
+    break;
+  case CMD_PWD:
+    handle_pwd_command();
+    break;
+  case CMD_CD:
+    handle_cd_command(cmd);
+    break;
+  case CMD_REDIR:
+    // printf("Got redir command!\n");
+    // exit(EXIT_FAILURE);
+    handle_redir_command(cmd);
+    break;
+  default:
+    fprintf(stderr, "Unable to determine command type!");
+    exit(EXIT_FAILURE);
+    break;
+  }
+}
+
 static Cmd_Header *create_exit_command() {
   Exit_Command *c = (Exit_Command *)malloc(sizeof(Exit_Command));
   c->hdr.type = CMD_EXIT;
@@ -102,17 +137,17 @@ Cmd_Header *create_redir_command(Args *ao) {
   Args *new_args = create_args_obj();
   new_args->size = redir_arg_num;
   for (int i = 0; i < redir_arg_num; i++) {
-     new_args->args[i] = ao->args[i];
+    new_args->args[i] = ao->args[i];
   }
   Cmd_Header *left_command = create_command(new_args);
   if (left_command == NULL) {
     fprintf(stderr, "Unable to get left-side command in %s! \n", __FUNCTION__);
     exit(EXIT_FAILURE);
-  } 
+  }
   c->command = left_command;
   c->filename = ao->args[redir_arg_num + 1];
   c->redir_type = check_if_redir_in_exec(ao);
-  return (Cmd_Header *) c;
+  return (Cmd_Header *)c;
 }
 
 /*char **resize_command_args(char **curr_args, int new_arg_size) {*/
@@ -161,7 +196,7 @@ void handle_type_command(Cmd_Header *c) {
 void handle_executable_command(Cmd_Header *c) {
   Executable_Command *exec = (Executable_Command *)c;
   if (exec->redir_type != NO_REDIR) {
-    handle_program_exec_w_redirect_or_append(exec);
+    // handle_program_exec_w_redirect_or_append(exec);
     return;
   }
   pid_t p = fork();
@@ -282,139 +317,175 @@ void handle_program_exec_w_pipe() {
   waitpid(second_fork, NULL, 0);
 }
 
-void handle_program_exec_w_redirect_or_append(Executable_Command *exec) {
-  size_t i = 0;
-  size_t size_of_full_command = 0;
-  switch (exec->redir_type) {
-  case STD_OUT:
-    for (; i < exec->ao->size; i++) {
-      if (strncmp(exec->ao->args[i], ">", 1) == 0 ||
-          strncmp(exec->ao->args[i], "1>", 2) == 0) {
-        break;
-      }
-      size_of_full_command += strlen(exec->ao->args[i]);
-    }
+void handle_redir_command(Cmd_Header *c) {
+  Redir_Command *rc = (Redir_Command *)c;
+  FILE *redir_file = fopen(rc->filename, "w");
+  if (redir_file == NULL) {
+    fprintf(stderr, "fopen failed in %s (Line: %d)\n", __FUNCTION__, __LINE__);
+    perror("fopen");
+    exit(EXIT_FAILURE);
+  }
+  int fd[2];
+  char read_buf[BUFF_LENGTH];
+  if (pipe(fd) == -1) {
+    fprintf(stderr, "Pipe failed! (%s: Line %d)\n", __FUNCTION__, __LINE__);
+    perror("pipe");
+    exit(EXIT_FAILURE);
+  }
+  pid_t cmd_process = fork();
+  switch (cmd_process) {
+  case -1:
+    fprintf(stderr, "Fork failed! (%s: Line %d)\n", __FUNCTION__, __LINE__);
+    exit(EXIT_FAILURE);
     break;
-  case APPEND_STD_OUT:
-    printf("Not yet: APPEND_STD_OUT\n");
-    exit(EXIT_FAILURE);
-  /*  for (; i < ao->size; i++) {*/
-  /*    if (strncmp(ao->args[i], ">>", 2) == 0 ||*/
-  /*        strncmp(ao->args[i], "1>>", 3) == 0) {*/
-  /*      break;*/
-  /*    }*/
-  /*    size_of_full_command += strlen(ao->args[i]);*/
-  /*  }*/
-  /*  break;*/
-  /*case STD_ERR:*/
-  /*  for (; i < ao->size; i++) {*/
-  /*    if (strncmp(ao->args[i], "2>", 2) == 0) {*/
-  /*      break;*/
-  /*    }*/
-  /*    size_of_full_command += strlen(ao->args[i]);*/
-  /*  }*/
-  /*  break;*/
-  case APPEND_STD_ERR:
-    printf("Not yet: APPEND_STD_ERR\n");
-    exit(EXIT_FAILURE);
-  /*  for (; i < ao->size; i++) {*/
-  /*    if (strncmp(ao->args[i], "2>>", 3) == 0) {*/
-  /*      break;*/
-  /*    }*/
-  /*    size_of_full_command += strlen(ao->args[i]);*/
-  /*  }*/
-  /*  break;*/
-  case NO_REDIR:
-    fprintf(stderr, "ao->redir_type is NO_REDIR for some reason \n");
-    break;
+  case 0: // child process
+    close(fd[0]);
+    dup2(STDOUT_FILENO, fd[1]);
+    handle_command(rc->command);
+    close(fd[1]);
+    exit(EXIT_SUCCESS);
+  default:
+    close(fd[1]);
+    while (read(fd[0], read_buf, BUFF_LENGTH) != 0) {
+      fprintf(redir_file, "%s", read_buf);
+    }
+    close(fd[0]);
+    wait(&cmd_process);
   }
-
-  size_of_full_command += i; // For spaces between each command;
-  if (i == exec->ao->size) {
-    char *err_line;
-    switch (exec->redir_type) {
-    case STD_OUT:
-      err_line = "Unable to find '>' or '1>' operator in ao->args!\n";
-      break;
-    case STD_ERR:
-      err_line = "Unable to find '>' or '2>' operator in ao->args!\n";
-      break;
-    case APPEND_STD_OUT:
-      err_line = "Unable to find '>>' or '1>>' operator in ao->args!\n";
-      break;
-    case APPEND_STD_ERR:
-      err_line = "Unable to find '2>>' operator in ao->args!\n";
-    case NO_REDIR:
-      err_line = "ao->redir_type is INITIAL_VAL for some reason \n";
-      break;
-    }
-    fprintf(stderr, "%s\n", err_line);
-    exit(EXIT_FAILURE);
-  }
-  char *full_command = (char *)malloc(sizeof(char) * size_of_full_command + 1);
-  full_command[0] = '\0';
-  strcat(full_command, exec->ao->args[0]);
-  for (size_t x = 1; x < i; x++) {
-    strcat(full_command, " ");
-    strcat(full_command, exec->ao->args[x]);
-  }
-  char output_buff[BUFF_LENGTH] = {0};
-  if (exec->redir_type == STD_OUT || exec->redir_type == APPEND_STD_OUT) {
-    FILE *cmd_f_ptr = popen(full_command, "r");
-    if (cmd_f_ptr == NULL) {
-      fprintf(stderr, "popen failed on line %d in %s\n", __LINE__,
-              __FUNCTION__);
-      exit(EXIT_FAILURE);
-    }
-    FILE *output_file;
-    if (exec->redir_type == STD_OUT) {
-      output_file = fopen(exec->ao->args[i + 1], "w");
-    } else {
-      output_file = fopen(exec->ao->args[i + 1], "a");
-    }
-    if (output_file == NULL) {
-      fprintf(stderr, "fopen failed on line %d in %s\n", __LINE__,
-              __FUNCTION__);
-      exit(EXIT_FAILURE);
-    }
-
-    while (fgets(output_buff, BUFF_LENGTH, cmd_f_ptr) != NULL) {
-      fprintf(output_file, "%s", output_buff);
-    }
-    pclose(cmd_f_ptr);
-    fclose(output_file);
-    free(full_command);
-    return;
-  } else if (ao->redir_type == STD_ERR || ao->redir_type == APPEND_STD_ERR) {
-    int fd;
-    if (exec->redir_type == STD_ERR) {
-      fd = open(exec->ao->args[i + 1], O_CREAT | O_WRONLY);
-    } else {
-      fd = open(exec->ao->args[i + 1], O_CREAT | O_APPEND | O_WRONLY);
-    }
-    if (fd == -1) {
-      perror("open");
-      exit(EXIT_FAILURE);
-    }
-    pid_t pid = fork();
-    switch (pid) {
-    case -1:
-      perror("fork");
-      exit(EXIT_FAILURE);
-    case 0:
-      if ((dup2(fd, STDERR_FILENO)) == -1) {
-        perror("dup2");
-        exit(EXIT_FAILURE);
-      }
-      system(full_command);
-    default:
-      wait(&pid);
-    }
-    free(full_command);
-    return;
-  }
-  printf("You shouldn't be here (Line %d)\n", __LINE__);
 }
+
+// void handle_program_exec_w_redirect_or_append(Executable_Command *exec) {
+//   size_t i = 0;
+//   size_t size_of_full_command = 0;
+//   switch (exec->redir_type) {
+//   case STD_OUT:
+//     for (; i < exec->ao->size; i++) {
+//       if (strncmp(exec->ao->args[i], ">", 1) == 0 ||
+//           strncmp(exec->ao->args[i], "1>", 2) == 0) {
+//         break;
+//       }
+//       size_of_full_command += strlen(exec->ao->args[i]);
+//     }
+//     break;
+//   case APPEND_STD_OUT:
+//     printf("Not yet: APPEND_STD_OUT\n");
+//     exit(EXIT_FAILURE);
+//   /*  for (; i < ao->size; i++) {*/
+//   /*    if (strncmp(ao->args[i], ">>", 2) == 0 ||*/
+//   /*        strncmp(ao->args[i], "1>>", 3) == 0) {*/
+//   /*      break;*/
+//   /*    }*/
+//   /*    size_of_full_command += strlen(ao->args[i]);*/
+//   /*  }*/
+//   /*  break;*/
+//   /*case STD_ERR:*/
+//   /*  for (; i < ao->size; i++) {*/
+//   /*    if (strncmp(ao->args[i], "2>", 2) == 0) {*/
+//   /*      break;*/
+//   /*    }*/
+//   /*    size_of_full_command += strlen(ao->args[i]);*/
+//   /*  }*/
+//   /*  break;*/
+//   case APPEND_STD_ERR:
+//     printf("Not yet: APPEND_STD_ERR\n");
+//     exit(EXIT_FAILURE);
+//   /*  for (; i < ao->size; i++) {*/
+//   /*    if (strncmp(ao->args[i], "2>>", 3) == 0) {*/
+//   /*      break;*/
+//   /*    }*/
+//   /*    size_of_full_command += strlen(ao->args[i]);*/
+//   /*  }*/
+//   /*  break;*/
+//   case NO_REDIR:
+//     fprintf(stderr, "ao->redir_type is NO_REDIR for some reason \n");
+//     break;
+//   }
+//
+//   size_of_full_command += i; // For spaces between each command;
+//   if (i == exec->ao->size) {
+//     char *err_line;
+//     switch (exec->redir_type) {
+//     case STD_OUT:
+//       err_line = "Unable to find '>' or '1>' operator in ao->args!\n";
+//       break;
+//     case STD_ERR:
+//       err_line = "Unable to find '>' or '2>' operator in ao->args!\n";
+//       break;
+//     case APPEND_STD_OUT:
+//       err_line = "Unable to find '>>' or '1>>' operator in ao->args!\n";
+//       break;
+//     case APPEND_STD_ERR:
+//       err_line = "Unable to find '2>>' operator in ao->args!\n";
+//     case NO_REDIR:
+//       err_line = "ao->redir_type is INITIAL_VAL for some reason \n";
+//       break;
+//     }
+//     fprintf(stderr, "%s\n", err_line);
+//     exit(EXIT_FAILURE);
+//   }
+//   char *full_command = (char *)malloc(sizeof(char) * size_of_full_command +
+//   1); full_command[0] = '\0'; strcat(full_command, exec->ao->args[0]); for
+//   (size_t x = 1; x < i; x++) {
+//     strcat(full_command, " ");
+//     strcat(full_command, exec->ao->args[x]);
+//   }
+//   char output_buff[BUFF_LENGTH] = {0};
+//   if (exec->redir_type == STD_OUT || exec->redir_type == APPEND_STD_OUT) {
+//     FILE *cmd_f_ptr = popen(full_command, "r");
+//     if (cmd_f_ptr == NULL) {
+//       fprintf(stderr, "popen failed on line %d in %s\n", __LINE__,
+//               __FUNCTION__);
+//       exit(EXIT_FAILURE);
+//     }
+//     FILE *output_file;
+//     if (exec->redir_type == STD_OUT) {
+//       output_file = fopen(exec->ao->args[i + 1], "w");
+//     } else {
+//       output_file = fopen(exec->ao->args[i + 1], "a");
+//     }
+//     if (output_file == NULL) {
+//       fprintf(stderr, "fopen failed on line %d in %s\n", __LINE__,
+//               __FUNCTION__);
+//       exit(EXIT_FAILURE);
+//     }
+//
+//     while (fgets(output_buff, BUFF_LENGTH, cmd_f_ptr) != NULL) {
+//       fprintf(output_file, "%s", output_buff);
+//     }
+//     pclose(cmd_f_ptr);
+//     fclose(output_file);
+//     free(full_command);
+//     return;
+//   } else if (ao->redir_type == STD_ERR || ao->redir_type == APPEND_STD_ERR) {
+//     int fd;
+//     if (exec->redir_type == STD_ERR) {
+//       fd = open(exec->ao->args[i + 1], O_CREAT | O_WRONLY);
+//     } else {
+//       fd = open(exec->ao->args[i + 1], O_CREAT | O_APPEND | O_WRONLY);
+//     }
+//     if (fd == -1) {
+//       perror("open");
+//       exit(EXIT_FAILURE);
+//     }
+//     pid_t pid = fork();
+//     switch (pid) {
+//     case -1:
+//       perror("fork");
+//       exit(EXIT_FAILURE);
+//     case 0:
+//       if ((dup2(fd, STDERR_FILENO)) == -1) {
+//         perror("dup2");
+//         exit(EXIT_FAILURE);
+//       }
+//       system(full_command);
+//     default:
+//       wait(&pid);
+//     }
+//     free(full_command);
+//     return;
+//   }
+//   printf("You shouldn't be here (Line %d)\n", __LINE__);
+// }
 
 char *search_for_exec(char *exec_input) {
   char *full_path = (char *)malloc(PATH_MAX * sizeof(char));
