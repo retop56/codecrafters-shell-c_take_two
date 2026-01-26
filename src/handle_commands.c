@@ -126,8 +126,12 @@ Cmd_Header *create_redir_command(Args *ao) {
   c->hdr.type = CMD_REDIR;
   int redir_arg_num = 0;
   for (int i = 0; i < ao->size; i++) {
-    if (strncmp(ao->args[i], ">", 1) == 0 ||
-        strncmp(ao->args[i], "1>", 2) == 0) {
+    if (strncmp(ao->args[i], ">>", 2) == 0 ||
+        strncmp(ao->args[i], ">", 1) == 0 ||
+        strncmp(ao->args[i], "1>>", 3) == 0 ||
+        strncmp(ao->args[i], "1>", 2) == 0 ||
+        strncmp(ao->args[i], "2>", 2) == 0 ||
+        strncmp(ao->args[i], "2>>", 3) == 0){
       break;
     }
     redir_arg_num++;
@@ -220,9 +224,19 @@ void handle_executable_command(Cmd_Header *c) {
 
 redir_t check_if_redir_in_exec(Args *ao) {
   for (int i = 0; i < ao->size; i++) {
+    if (strncmp(ao->args[i], "1>>", 3) == 0 ||
+        strncmp(ao->args[i], ">>", 2) == 0) {
+      return APPEND_STD_OUT;
+    }
     if (strncmp(ao->args[i], ">", 1) == 0 ||
         strncmp(ao->args[i], "1>", 2) == 0) {
-      return STD_OUT;
+      return REDIR_STD_OUT;
+    }
+    if (strncmp(ao->args[i], "2>>", 3) == 0) {
+      return APPEND_STD_ERR;
+    }
+    if (strncmp(ao->args[i], "2>", 2) == 0) {
+      return REDIR_STD_ERR;
     }
   }
   return NO_REDIR;
@@ -319,38 +333,109 @@ void handle_program_exec_w_pipe() {
 
 void handle_redir_command(Cmd_Header *c) {
   Redir_Command *rc = (Redir_Command *)c;
-  FILE *redir_file = fopen(rc->filename, "w");
-  if (redir_file == NULL) {
-    fprintf(stderr, "fopen failed in %s (Line: %d)\n", __FUNCTION__, __LINE__);
-    perror("fopen");
-    exit(EXIT_FAILURE);
-  }
-  int fd[2];
-  char read_buf[BUFF_LENGTH];
-  if (pipe(fd) == -1) {
-    fprintf(stderr, "Pipe failed! (%s: Line %d)\n", __FUNCTION__, __LINE__);
-    perror("pipe");
-    exit(EXIT_FAILURE);
-  }
-  pid_t cmd_process = fork();
-  switch (cmd_process) {
-  case -1:
-    fprintf(stderr, "Fork failed! (%s: Line %d)\n", __FUNCTION__, __LINE__);
-    exit(EXIT_FAILURE);
-    break;
-  case 0: // child process
-    close(fd[0]);
-    dup2(STDOUT_FILENO, fd[1]);
-    handle_command(rc->command);
-    close(fd[1]);
-    exit(EXIT_SUCCESS);
-  default:
-    close(fd[1]);
-    while (read(fd[0], read_buf, BUFF_LENGTH) != 0) {
-      fprintf(redir_file, "%s", read_buf);
+  int filefd;
+  pid_t child_process;
+  if (rc->redir_type == REDIR_STD_OUT) {
+    filefd = open(rc->filename, O_WRONLY|O_CREAT, 0666);
+    child_process = fork();
+    switch (child_process) {
+    case -1:
+      fprintf(stderr, "Fork failed! (Func %s: Line %d)\n", __FUNCTION__,
+              __LINE__);
+      perror("fork");
+      exit(EXIT_FAILURE);
+      break;
+    case 0: // child process
+      close(STDOUT_FILENO);
+      dup(filefd);
+      handle_command(rc->command);
+      close(filefd);
+      exit(EXIT_SUCCESS);
+      break;
+    default: // parent process
+      close(filefd);
+      wait(&child_process);
+      break;
     }
-    close(fd[0]);
-    wait(&cmd_process);
+    return;
+  }
+  if (rc->redir_type == REDIR_STD_ERR) {
+    filefd = open(rc->filename, O_WRONLY|O_CREAT, 0666);
+    child_process = fork();
+    switch (child_process) {
+    case -1:
+      fprintf(stderr, "Fork failed! (Func %s: Line %d)\n", __FUNCTION__,
+              __LINE__);
+      perror("fork");
+      exit(EXIT_FAILURE);
+      break;
+    case 0: // child process
+      close(STDERR_FILENO);
+      dup(filefd);
+      handle_command(rc->command);
+      close(filefd);
+      exit(EXIT_SUCCESS);
+      break;
+    default: // parent process
+      close(filefd);
+      wait(&child_process);
+      break;
+    }
+    return;
+  }
+  if (rc->redir_type == APPEND_STD_OUT) {
+    filefd = open(rc->filename, O_WRONLY|O_APPEND|O_CREAT, 0666);
+    if (filefd == -1) {
+      fprintf(stderr, "Failed to open %s! (Func %s: Line %d)\n", rc->filename,
+              __FUNCTION__, __LINE__);
+      perror("open");
+      exit(EXIT_FAILURE);
+    }
+    child_process = fork();
+    switch (child_process) {
+    case -1:
+      fprintf(stderr, "Fork failed! (Func %s: Line %d)\n", __FUNCTION__,
+              __LINE__);
+      perror("fork");
+      exit(EXIT_FAILURE);
+    case 0: // child process
+      close(STDOUT_FILENO);
+      dup(filefd);
+      handle_command(rc->command);
+      close(filefd);
+      exit(EXIT_SUCCESS);
+    default: // parent process
+      close(filefd);
+      wait(&child_process);
+    }
+    return;
+  }
+  if (rc->redir_type == APPEND_STD_ERR) {
+    filefd = open(rc->filename, O_WRONLY|O_APPEND|O_CREAT, 0666);
+    if (filefd == -1) {
+      fprintf(stderr, "Failed to open %s! (Func %s: Line %d)\n", rc->filename,
+              __FUNCTION__, __LINE__);
+      perror("open");
+      exit(EXIT_FAILURE);
+    }
+    child_process = fork();
+    switch (child_process) {
+    case -1:
+      fprintf(stderr, "Fork failed! (Func %s: Line %d)\n", __FUNCTION__,
+              __LINE__);
+      perror("fork");
+      exit(EXIT_FAILURE);
+    case 0: // child process
+      close(STDERR_FILENO);
+      dup(filefd);
+      handle_command(rc->command);
+      close(filefd);
+      exit(EXIT_SUCCESS);
+    default: // parent process
+      close(filefd);
+      wait(&child_process);
+    }
+    return;
   }
 }
 

@@ -32,7 +32,7 @@ void add_cmd_args(Args *ao) {
       get_single_quote_arg();
       if (strncmp(curr_char, "\'", 1) == 0) {
         /*received_arg =*/
-            /*skip_past_adjacent_quotes_and_combine(received_arg, '\'');*/
+        /*skip_past_adjacent_quotes_and_combine(received_arg, '\'');*/
         /*skip_past_adjacent_quotes_and_combine('\'');*/
         get_single_quote_arg();
       }
@@ -49,9 +49,14 @@ void add_cmd_args(Args *ao) {
     }
     skip_past_spaces();
     /*args[n++] = received_arg;*/
-    if (strncmp(received_arg, ">", 1) == 0 ||
-        strncmp(received_arg, "1>", 2) == 0) {
-      ao->redir_type = STD_OUT;
+    if (strncmp(received_arg, "1>>", 3) == 0 ||
+        strncmp(received_arg, ">>", 2) == 0) {
+      ao->redir_type = APPEND_STD_OUT;
+    } else if (strncmp(received_arg, ">", 1) == 0 ||
+               strncmp(received_arg, "1>", 2) == 0) {
+      ao->redir_type = REDIR_STD_OUT;
+    } else if (strncmp(received_arg, "2>", 2) == 0) {
+      ao->redir_type = REDIR_STD_ERR;
     }
     received_arg = strdup(curr_arg);
     if (received_arg == NULL) {
@@ -72,23 +77,23 @@ static char *get_normal_arg(void) {
       curr_char += 2;
     } else if (empty_double_quotes_in_normal_arg()) {
       curr_char += 2;
-    }else if (start_of_single_quoted_text()) {
+    } else if (start_of_single_quoted_text()) {
       /*curr_char++; /* skip past first single quote */
       /*while (*curr_char != '\'' && *curr_char != '\0') {*/
-        /*curr_arg[count++] = *curr_char++;*/
+      /*curr_arg[count++] = *curr_char++;*/
       /*}*/
       /*if (*curr_char == '\'') {*/
-        /*curr_char++; /* skip past second single quote */
+      /*curr_char++; /* skip past second single quote */
       /*}*/
       get_single_quote_arg();
     } else if (start_of_double_quote_text()) {
-    /*  curr_char++; /* skip past first double quote */
-    /*  while (*curr_char != '\"' && *curr_char != '\0') {*/
-    /*    curr_arg[count++] = *curr_char++;*/
-    /*  }*/
-    /*  if (*curr_char == '\"') {*/
-    /*    curr_char++; /* skip past second double quote */
-    /*  }*/
+      /*  curr_char++; /* skip past first double quote */
+      /*  while (*curr_char != '\"' && *curr_char != '\0') {*/
+      /*    curr_arg[count++] = *curr_char++;*/
+      /*  }*/
+      /*  if (*curr_char == '\"') {*/
+      /*    curr_char++; /* skip past second double quote */
+      /*  }*/
       get_double_quote_arg();
     } else {
       curr_arg[count++] = *curr_char++;

@@ -6,8 +6,8 @@ typedef enum Backslash_Mode {
 } BKSLSH_MODE;
 
 typedef enum {
-  STD_OUT,
-  STD_ERR,
+  REDIR_STD_OUT,
+  REDIR_STD_ERR,
   APPEND_STD_OUT,
   APPEND_STD_ERR,
   NO_REDIR

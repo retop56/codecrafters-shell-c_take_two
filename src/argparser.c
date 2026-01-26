@@ -109,9 +109,9 @@ static void set_redir_type(char *arg) {
   } else if (strncmp(arg, "2>>", 3) == 0) {
     ao->redir_type = APPEND_STD_ERR;
   } else if (strncmp(arg, ">", 1) == 0 || strncmp(arg, "1>", 2) == 0) {
-    ao->redir_type = STD_OUT;
+    ao->redir_type = REDIR_STD_OUT;
   } else if (strncmp(arg, "2>", 2) == 0) {
-    ao->redir_type = STD_ERR;
+    ao->redir_type = REDIR_STD_ERR;
   }
 }
 
