@@ -19,6 +19,7 @@ Args *create_args_obj() {
     exit(EXIT_FAILURE);
   }
   ao->redir_type = NO_REDIR;
+  ao->contains_pipe = false;
   return ao;
 }
 
@@ -28,12 +29,8 @@ void add_cmd_args(Args *ao) {
   while (*curr_char != '\0') {
     count = 0;
     if (strncmp(curr_char, "\'", 1) == 0) {
-      /*received_arg = get_single_quote_arg();*/
       get_single_quote_arg();
       if (strncmp(curr_char, "\'", 1) == 0) {
-        /*received_arg =*/
-        /*skip_past_adjacent_quotes_and_combine(received_arg, '\'');*/
-        /*skip_past_adjacent_quotes_and_combine('\'');*/
         get_single_quote_arg();
       }
     } else if (strncmp(curr_char, "\"", 1) == 0) {
@@ -43,20 +40,19 @@ void add_cmd_args(Args *ao) {
             skip_past_adjacent_quotes_and_combine(received_arg, '\"');
       }
     } else {
-      /*received_arg = get_normal_arg();*/
-      /*received_arg = check_empty_quoted_arg(received_arg);*/
       get_normal_arg();
     }
     skip_past_spaces();
-    /*args[n++] = received_arg;*/
-    if (strncmp(received_arg, "1>>", 3) == 0 ||
-        strncmp(received_arg, ">>", 2) == 0) {
+    if (strncmp(curr_arg, "1>>", 3) == 0 ||
+        strncmp(curr_arg, ">>", 2) == 0) {
       ao->redir_type = APPEND_STD_OUT;
-    } else if (strncmp(received_arg, ">", 1) == 0 ||
-               strncmp(received_arg, "1>", 2) == 0) {
+    } else if (strncmp(curr_arg, ">", 1) == 0 ||
+               strncmp(curr_arg, "1>", 2) == 0) {
       ao->redir_type = REDIR_STD_OUT;
-    } else if (strncmp(received_arg, "2>", 2) == 0) {
+    } else if (strncmp(curr_arg, "2>", 2) == 0) {
       ao->redir_type = REDIR_STD_ERR;
+    } else if (strncmp(curr_arg, "|", 1) == 0) {
+      ao->contains_pipe = true;
     }
     received_arg = strdup(curr_arg);
     if (received_arg == NULL) {
@@ -69,8 +65,7 @@ void add_cmd_args(Args *ao) {
 }
 
 static char *get_normal_arg(void) {
-  while (*curr_char != '\0' && *curr_char != ' ' /*&& *curr_char != '\'' &&
-         *curr_char != '\"'*/) {
+  while (*curr_char != '\0' && *curr_char != ' ') {
     if (*curr_char == '\\') {
       curr_arg[count++] = handle_backslash_char(OUTSIDE_QUOTES);
     } else if (empty_single_quotes_in_normal_arg()) {
@@ -78,22 +73,8 @@ static char *get_normal_arg(void) {
     } else if (empty_double_quotes_in_normal_arg()) {
       curr_char += 2;
     } else if (start_of_single_quoted_text()) {
-      /*curr_char++; /* skip past first single quote */
-      /*while (*curr_char != '\'' && *curr_char != '\0') {*/
-      /*curr_arg[count++] = *curr_char++;*/
-      /*}*/
-      /*if (*curr_char == '\'') {*/
-      /*curr_char++; /* skip past second single quote */
-      /*}*/
       get_single_quote_arg();
     } else if (start_of_double_quote_text()) {
-      /*  curr_char++; /* skip past first double quote */
-      /*  while (*curr_char != '\"' && *curr_char != '\0') {*/
-      /*    curr_arg[count++] = *curr_char++;*/
-      /*  }*/
-      /*  if (*curr_char == '\"') {*/
-      /*    curr_char++; /* skip past second double quote */
-      /*  }*/
       get_double_quote_arg();
     } else {
       curr_arg[count++] = *curr_char++;
@@ -131,11 +112,9 @@ static void skip_past_spaces(void) {
 
 static char *get_single_quote_arg(void) {
   curr_char++; /* Skip past first single quote */
-  /*size_t count = 0;*/
   while (*curr_char != '\0' && *curr_char != '\'') {
     curr_arg[count++] = *curr_char++;
   }
-  /*curr_arg[count] = '\0';*/
   if (*curr_char == '\'') { /* Skip past second single quote */
     curr_char++;
   }
@@ -149,7 +128,6 @@ static char *get_single_quote_arg(void) {
 
 static char *get_double_quote_arg(void) {
   curr_char++; /* Skip past first double quote */
-  /*size_t count = 0;*/
   while (*curr_char != '\0' && *curr_char != '\"') {
     if (*curr_char == '\\') {
       curr_arg[count++] = handle_backslash_char(INSIDE_DOUBLE_QUOTES);
@@ -174,7 +152,6 @@ static char *get_double_quote_arg(void) {
       curr_arg[count++] = *curr_char++;
     }
   }
-  /*curr_arg[count] = '\0';*/
   char *new_arg = strndup(curr_arg, count);
   if (new_arg == NULL) {
     fprintf(stderr, "strndup failed at line %d in %s\n", (__LINE__)-2,

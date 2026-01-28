@@ -1,4 +1,6 @@
 #pragma once
+#include <stdbool.h>
+typedef enum { COMMAND, EXEC, EXEC_LTP, NONE } Multiple_T;
 
 typedef enum Backslash_Mode {
   INSIDE_DOUBLE_QUOTES,
@@ -18,4 +20,5 @@ typedef struct ao {
   int size;
   int capacity;
   redir_t redir_type;
+  bool contains_pipe;
 } Args;

@@ -25,6 +25,7 @@ typedef enum {
   CMD_PWD,
   CMD_CD,
   CMD_REDIR,
+  CMD_PIPELINE,
   CMD_COUNT
 } Cmd_Type;
 
@@ -72,5 +73,13 @@ typedef struct {
   Cmd_Header* command;
   char * filename;
   redir_t redir_type;
-  int redir_arg_num;
+  // int redir_arg_num;
 } Redir_Command;
+
+typedef struct {
+  Cmd_Header hdr;
+  int fd[2];
+  Cmd_Header* left_cmd;
+  Cmd_Header* right_cmd;
+  int pipe_arg_num;
+} Pipeline_Command;
