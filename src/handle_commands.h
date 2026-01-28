@@ -29,5 +29,3 @@ void handle_pwd_command();
 void handle_cd_command(Cmd_Header *c);
 void handle_redir_command(Cmd_Header *c);
 void handle_pipeline_command(Cmd_Header *c);
-void handle_program_exec_w_redirect_or_append(Executable_Command *exec);
-void handle_program_exec_w_pipe();

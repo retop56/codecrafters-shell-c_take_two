@@ -67,8 +67,6 @@ void handle_command(Cmd_Header *cmd) {
     handle_redir_command(cmd);
     break;
   case CMD_PIPELINE:
-    // printf("Found pipeline command (%s)\n", __FUNCTION__);
-    // exit(EXIT_FAILURE);
     handle_pipeline_command(cmd);
     break;
   default:
@@ -143,7 +141,6 @@ Cmd_Header *create_redir_command(Args *ao) {
     redir_arg_num++;
   }
   Args *new_args = create_args_obj();
-  // new_args->size = redir_arg_num;
   for (int i = 0; i < redir_arg_num; i++) {
     new_args->args[i] = ao->args[i];
     new_args->size++;
@@ -178,9 +175,6 @@ static Cmd_Header *create_pipeline_command(Args *ao) {
     ao_arg_cnt++;
     left_args->size++;
   }
-  // for (int i = 0; i < left_args->size; i++) {
-  //   printf("left_args->args[%d]: %s\n", i, left_args->args[i]);
-  // }
   Cmd_Header *left_command = create_command(left_args);
   ao_arg_cnt++; // Skip past '|'
   Args *right_args = create_args_obj();
@@ -191,11 +185,7 @@ static Cmd_Header *create_pipeline_command(Args *ao) {
     ao_arg_cnt++;
     right_args->size++;
   }
-  // for (int i = 0; i < right_args->size; i++) {
-  //   printf("right_args->args[%d]: %s\n", i, right_args->args[i]);
-  // }
   Cmd_Header *right_command = create_command(right_args);
-  // exit(EXIT_FAILURE);
   c->left_cmd = left_command;
   c->right_cmd = right_command;
   return (Cmd_Header *)c;
@@ -238,7 +228,6 @@ void handle_type_command(Cmd_Header *c) {
 void handle_executable_command(Cmd_Header *c) {
   Executable_Command *exec = (Executable_Command *)c;
   if (exec->redir_type != NO_REDIR) {
-    // handle_program_exec_w_redirect_or_append(exec);
     return;
   }
   pid_t p = fork();
@@ -278,71 +267,6 @@ redir_t check_if_redir_in_exec(Args *ao) {
     }
   }
   return NO_REDIR;
-}
-
-void handle_program_exec_w_pipe() {
-  size_t i = 0;
-  for (; i < ao->size; i++) {
-    if (strncmp(ao->args[i], "|", 1) == 0) {
-      break;
-    }
-  }
-  char **first_prog_args = (char **)malloc((i + 1) * sizeof(char *));
-  for (size_t a = 0; a < i; a++) {
-    first_prog_args[a] = ao->args[a];
-  }
-  first_prog_args[i] = NULL; /* argument array must be null-terminated */
-  int fildes[2];
-  if (pipe(fildes) == -1) {
-    perror("pipe");
-    exit(EXIT_FAILURE);
-  }
-  char buf[BUFF_LENGTH];
-  pid_t first_fork = fork();
-  switch (first_fork) {
-  case -1:
-    perror("fork");
-    exit(EXIT_FAILURE);
-    break;
-  case 0: // child process
-    close(STDOUT_FILENO);
-    dup(fildes[1]);
-    close(fildes[0]);
-    close(fildes[1]);
-    execvp(first_prog_args[0], first_prog_args);
-    perror("execvp");
-    exit(EXIT_FAILURE);
-    break;
-  }
-  char **second_prog_args = (char **)malloc((ao->size - i) * sizeof(char *));
-  int a = 0;
-  i++; /* skip past '|' arg */
-  while (i < ao->size) {
-    second_prog_args[a] = ao->args[i];
-    a++;
-    i++;
-  }
-  second_prog_args[a] = (char *)NULL;
-  pid_t second_fork = fork();
-  switch (second_fork) {
-  case -1:
-    perror("fork");
-    exit(EXIT_FAILURE);
-    break;
-  case 0: /* child process */
-    close(STDIN_FILENO);
-    dup(fildes[0]);
-    close(fildes[0]);
-    close(fildes[1]);
-    execvp(second_prog_args[0], second_prog_args);
-    perror("execvp");
-    exit(EXIT_FAILURE);
-    break;
-  }
-  close(fildes[0]);
-  close(fildes[1]);
-  waitpid(first_fork, NULL, 0);
-  waitpid(second_fork, NULL, 0);
 }
 
 void handle_redir_command(Cmd_Header *c) {
