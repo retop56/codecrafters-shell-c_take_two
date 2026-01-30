@@ -168,30 +168,25 @@ static Cmd_Header *create_pipeline_command(Args *ao) {
   }
   c->cmds = malloc(sizeof(Cmd_Header *) * 10);
   c->num_of_cmds = 0;
-  Args *left_args = create_args_obj();
   int ao_arg_cnt = 0;
   int curr_arg_cnt = 0;
-  while (*ao->args[ao_arg_cnt] != '|') {
-    left_args->args[curr_arg_cnt] = ao->args[ao_arg_cnt];
-    curr_arg_cnt++;
-    ao_arg_cnt++;
-    left_args->size++;
-  }
-  Cmd_Header *left_command = create_command(left_args);
-  c->cmds[c->num_of_cmds++] = left_command;
-  ao_arg_cnt++; // Skip past '|'
-  Args *right_args = create_args_obj();
-  curr_arg_cnt = 0;
+  Args *a = create_args_obj();
   while (ao_arg_cnt < ao->size) {
-    right_args->args[curr_arg_cnt] = ao->args[ao_arg_cnt];
-    curr_arg_cnt++;
-    ao_arg_cnt++;
-    right_args->size++;
+    if (*ao->args[ao_arg_cnt] != '|') {
+      a->args[curr_arg_cnt] = ao->args[ao_arg_cnt];
+      curr_arg_cnt++;
+      ao_arg_cnt++;
+      a->size++;
+    } else {
+      c->cmds[c->num_of_cmds++] = create_command(a);
+      ao_arg_cnt++; // Skip past '|'
+      curr_arg_cnt = 0;
+      if (ao_arg_cnt < ao->size) {
+        a = create_args_obj();
+      }
+    } 
   }
-  Cmd_Header *right_command = create_command(right_args);
-  // c->left_cmd = left_command;
-  // c->right_cmd = right_command;
-  c->cmds[c->num_of_cmds++] = right_command;
+  c->cmds[c->num_of_cmds++] = create_command(a);
   return (Cmd_Header *)c;
 }
 
