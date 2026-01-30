@@ -166,6 +166,8 @@ static Cmd_Header *create_pipeline_command(Args *ao) {
     }
     c->pipe_arg_num++;
   }
+  c->cmds = malloc(sizeof(Cmd_Header *) * 10);
+  c->num_of_cmds = 0;
   Args *left_args = create_args_obj();
   int ao_arg_cnt = 0;
   int curr_arg_cnt = 0;
@@ -176,6 +178,7 @@ static Cmd_Header *create_pipeline_command(Args *ao) {
     left_args->size++;
   }
   Cmd_Header *left_command = create_command(left_args);
+  c->cmds[c->num_of_cmds++] = left_command;
   ao_arg_cnt++; // Skip past '|'
   Args *right_args = create_args_obj();
   curr_arg_cnt = 0;
@@ -186,8 +189,9 @@ static Cmd_Header *create_pipeline_command(Args *ao) {
     right_args->size++;
   }
   Cmd_Header *right_command = create_command(right_args);
-  c->left_cmd = left_command;
-  c->right_cmd = right_command;
+  // c->left_cmd = left_command;
+  // c->right_cmd = right_command;
+  c->cmds[c->num_of_cmds++] = right_command;
   return (Cmd_Header *)c;
 }
 
@@ -383,38 +387,39 @@ void handle_pipeline_command(Cmd_Header *c) {
     perror("pipe");
     exit(EXIT_FAILURE);
   }
-  pid_t first_fork = fork();
-  switch (first_fork) {
-  case -1:
-    perror("fork");
-    exit(EXIT_FAILURE);
-    break;
-  case 0: // child process
-    close(STDOUT_FILENO);
-    dup(pc->fd[1]);
-    close(pc->fd[0]);
-    close(pc->fd[1]);
-    handle_command(pc->left_cmd);
-    exit(EXIT_SUCCESS);
-  }
-  pid_t second_fork = fork();
-  switch (second_fork) {
-  case -1:
-    perror("fork");
-    exit(EXIT_FAILURE);
-    break;
-  case 0: /* child process */
-    close(STDIN_FILENO);
-    dup(pc->fd[0]);
-    close(pc->fd[0]);
-    close(pc->fd[1]);
-    handle_command(pc->right_cmd);
-    exit(EXIT_SUCCESS);
+  for (int curr_cmd = 0; curr_cmd < pc->num_of_cmds; curr_cmd++) {
+    pid_t f = fork();
+    switch (f) {
+    case -1:
+      perror("fork");
+      exit(EXIT_FAILURE);
+      break;
+    case 0: // child process
+      if (curr_cmd == 0) {
+        // first command
+        close(STDOUT_FILENO);
+        dup(pc->fd[1]);
+      } else if (curr_cmd == (pc->num_of_cmds - 1)) {
+        // last command
+        close(STDIN_FILENO);
+        dup(pc->fd[0]);
+      } else {
+        // middle command
+        close(STDIN_FILENO);
+        dup(pc->fd[0]);
+        close(STDOUT_FILENO);
+        dup(pc->fd[1]);
+      }
+      close(pc->fd[0]);
+      close(pc->fd[1]);
+      handle_command(pc->cmds[curr_cmd]);
+      exit(EXIT_SUCCESS);
+    }
   }
   close(pc->fd[0]);
   close(pc->fd[1]);
-  waitpid(first_fork, NULL, 0);
-  waitpid(second_fork, NULL, 0);
+  while (wait(NULL) > 0)
+    ;
 }
 
 char *search_for_exec(char *exec_input) {

@@ -79,7 +79,7 @@ typedef struct {
 typedef struct {
   Cmd_Header hdr;
   int fd[2];
-  Cmd_Header* left_cmd;
-  Cmd_Header* right_cmd;
+  Cmd_Header **cmds;
+  int num_of_cmds;
   int pipe_arg_num;
 } Pipeline_Command;
