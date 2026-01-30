@@ -394,16 +394,16 @@ void handle_pipeline_command(Cmd_Header *c) {
         // first command
         close(STDOUT_FILENO);
         dup(pc->fd[1]);
-      } else if (curr_cmd == (pc->num_of_cmds - 1)) {
-        // last command
-        close(STDIN_FILENO);
-        dup(pc->fd[0]);
-      } else {
+      } else if (curr_cmd + 1 != pc->num_of_cmds) {
         // middle command
         close(STDIN_FILENO);
         dup(pc->fd[0]);
         close(STDOUT_FILENO);
         dup(pc->fd[1]);
+      } else {
+        // last command
+        close(STDIN_FILENO);
+        dup(pc->fd[0]);
       }
       close(pc->fd[0]);
       close(pc->fd[1]);
