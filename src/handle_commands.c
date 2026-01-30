@@ -184,7 +184,7 @@ static Cmd_Header *create_pipeline_command(Args *ao) {
       if (ao_arg_cnt < ao->size) {
         a = create_args_obj();
       }
-    } 
+    }
   }
   c->cmds[c->num_of_cmds++] = create_command(a);
   return (Cmd_Header *)c;
@@ -378,11 +378,12 @@ void handle_redir_command(Cmd_Header *c) {
 
 void handle_pipeline_command(Cmd_Header *c) {
   Pipeline_Command *pc = (Pipeline_Command *)c;
-  if (pipe(pc->fd) != 0) {
-    perror("pipe");
-    exit(EXIT_FAILURE);
-  }
+  int prev_read_pipe = STDIN_FILENO;
   for (int curr_cmd = 0; curr_cmd < pc->num_of_cmds; curr_cmd++) {
+    if (pipe(pc->fd) != 0) {
+      perror("pipe");
+      exit(EXIT_FAILURE);
+    }
     pid_t f = fork();
     switch (f) {
     case -1:
@@ -397,22 +398,26 @@ void handle_pipeline_command(Cmd_Header *c) {
       } else if (curr_cmd + 1 != pc->num_of_cmds) {
         // middle command
         close(STDIN_FILENO);
-        dup(pc->fd[0]);
+        dup(prev_read_pipe);
         close(STDOUT_FILENO);
         dup(pc->fd[1]);
       } else {
         // last command
         close(STDIN_FILENO);
-        dup(pc->fd[0]);
+        dup(prev_read_pipe);
       }
       close(pc->fd[0]);
       close(pc->fd[1]);
       handle_command(pc->cmds[curr_cmd]);
       exit(EXIT_SUCCESS);
+    default:
+      close(pc->fd[1]);
+      prev_read_pipe = pc->fd[0];
+      break;
     }
   }
-  close(pc->fd[0]);
-  close(pc->fd[1]);
+  // close(pc->fd[0]);
+  // close(pc->fd[1]);
   while (wait(NULL) > 0)
     ;
 }
