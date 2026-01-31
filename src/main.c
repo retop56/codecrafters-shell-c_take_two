@@ -13,6 +13,7 @@
 struct arg_obj *ao;
 char *input = NULL;
 char *curr_char = NULL;
+int last_append_entry_num = -1;
 
 int main() {
   rl_attempted_completion_function = completion_func;

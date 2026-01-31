@@ -14,6 +14,7 @@
 extern struct arg_obj *ao;
 extern char *input;
 extern char *curr_char;
+extern int last_append_entry_num;
 
 char **resize_command_args(char **curr_args, int new_arg_size);
 
@@ -558,23 +559,39 @@ void handle_history_command(Cmd_Header *c) {
   History_Command *hc = (History_Command *)c;
   HISTORY_STATE *hs = history_get_history_state();
   HIST_ENTRY *he;
-  if (hc->ao->size > 2 && strncmp(hc->ao->args[1], "-r", 2) == 0) {
-    clear_history();
-    add_history(input);
-    if (read_history(hc->ao->args[2]) != 0) {
-      fprintf(stderr, "'read_history' failed! (%s: Line %d)\n", __FUNCTION__,
-              __LINE__);
-      exit(EXIT_FAILURE);
+  if (hc->ao->size > 2) {
+    if (strncmp(hc->ao->args[1], "-r", 2) == 0) {
+      clear_history();
+      add_history(input);
+      if (read_history(hc->ao->args[2]) != 0) {
+        fprintf(stderr, "'read_history' failed! (%s: Line %d)\n", __FUNCTION__,
+                __LINE__);
+        exit(EXIT_FAILURE);
+      }
+      return;
     }
-    return;
-  }
-  if (hc->ao->size > 2 && strncmp(hc->ao->args[1], "-w", 2) == 0) {
-    if (write_history(hc->ao->args[2]) != 0) {
-      fprintf(stderr, "'write_history' failed! (%s: Line %d)\n", __FUNCTION__,
-              __LINE__);
-      exit(EXIT_FAILURE);
+    if (strncmp(hc->ao->args[1], "-w", 2) == 0) {
+      if (write_history(hc->ao->args[2]) != 0) {
+        fprintf(stderr, "'write_history' failed! (%s: Line %d)\n", __FUNCTION__,
+                __LINE__);
+        exit(EXIT_FAILURE);
+      }
+      return;
     }
-    return;
+    if(strncmp(hc->ao->args[1], "-a", 2) == 0) {
+      int entries_to_add;
+      if (last_append_entry_num != -1) {
+         entries_to_add = history_length - last_append_entry_num;
+      } else {
+        entries_to_add = history_length;
+      }
+      if (append_history(entries_to_add, hc->ao->args[2]) != 0) {
+        fprintf(stderr, "'append_history' failed! (%s: Line %d)\n", __FUNCTION__, __LINE__);
+        exit(EXIT_FAILURE);
+      }
+      last_append_entry_num = history_length;
+      return;
+    }
   }
   if (hc->ao->size > 1) {
     int entry_start = hs->length - atoi(hc->ao->args[1]);
