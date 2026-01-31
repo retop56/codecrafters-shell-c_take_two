@@ -6,11 +6,11 @@
 #include "shell_types.h"
 #include <fcntl.h>
 #include <linux/limits.h>
+#include <readline/history.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <readline/history.h>
 extern struct arg_obj *ao;
 extern char *input;
 extern char *curr_char;
@@ -35,7 +35,7 @@ Cmd_Header *create_command(Args *ao) {
     return create_cd_command(ao);
   } else if (strncmp(ao->args[0], "history", 7) == 0) {
     return create_history_command(ao);
-  }else if ((possible_exe = search_for_exec(ao->args[0])) != NULL) {
+  } else if ((possible_exe = search_for_exec(ao->args[0])) != NULL) {
     return create_executable_command(ao);
   } else {
     return create_invalid_command();
@@ -132,7 +132,9 @@ Cmd_Header *create_cd_command(Args *ao) {
 }
 
 static Cmd_Header *create_history_command(Args *ao) {
-  History_Command *c = (History_Command *)malloc(sizeof(History_Command));  c->hdr.type = CMD_HISTORY;
+  History_Command *c = (History_Command *)malloc(sizeof(History_Command));
+  c->hdr.type = CMD_HISTORY;
+  c->ao = ao;
   return (Cmd_Header *)c;
 }
 
@@ -553,12 +555,18 @@ void handle_cd_command(Cmd_Header *c) {
 }
 
 void handle_history_command(Cmd_Header *c) {
-  // printf("Inside 'handle_history_command'\n");
   History_Command *hc = (History_Command *)c;
   HISTORY_STATE *hs = history_get_history_state();
-  // printf("Got back history state with %d entries\n", hs->length);
+  HIST_ENTRY *he;
+  if (hc->ao->size > 1) {
+    int entry_start = hs->length - atoi(hc->ao->args[1]);
+    for(int i = entry_start; i < hs->length; i++) {
+      printf("    %d  %s\n", i + 1, hs->entries[i]->line);
+    }
+    return;
+  }
   for (int i = 0; i < hs->length; i++) {
-    HIST_ENTRY *he = hs->entries[i];
+    he = hs->entries[i];
     printf("\t%d  %s\n", i + 1, he->line);
   }
 }

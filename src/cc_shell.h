@@ -87,4 +87,5 @@ typedef struct {
 
 typedef struct {
   Cmd_Header hdr;
+  Args *ao;
 } History_Command;
