@@ -215,7 +215,8 @@ void handle_type_command(Cmd_Header *c) {
   if (strcmp(tc->ao->args[1], "echo") == 0 ||
       strcmp(tc->ao->args[1], "exit") == 0 ||
       strcmp(tc->ao->args[1], "type") == 0 ||
-      strcmp(tc->ao->args[1], "pwd") == 0) {
+      strcmp(tc->ao->args[1], "pwd") == 0 ||
+      strcmp(tc->ao->args[1], "history") == 0) {
     printf("%s is a shell builtin\n", tc->ao->args[1]);
   } else if ((possible_exe = search_for_exec(tc->ao->args[1])) != NULL) {
     printf("%s is %s\n", tc->ao->args[1], possible_exe);
