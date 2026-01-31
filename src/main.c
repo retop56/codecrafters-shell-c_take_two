@@ -1,4 +1,3 @@
-#include "arg_obj_def.h"
 #include "cmd_arg_parser.h"
 #include "handle_commands.h"
 #include <readline/history.h>
@@ -10,7 +9,6 @@
 #include "shell_types.h"
 #include "completion.h"
 #include "history_management.h"
-struct arg_obj *ao;
 char *input = NULL;
 char *curr_char = NULL;
 int last_append_entry_num = -1;

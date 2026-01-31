@@ -1,5 +1,4 @@
 #include "handle_commands.h"
-#include "arg_obj_def.h"
 #include "cc_shell.h"
 #include "cmd_arg_parser.h"
 #include "history_management.h"
@@ -11,12 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-extern struct arg_obj *ao;
 extern char *input;
 extern char *curr_char;
 extern int last_append_entry_num;
-
-char **resize_command_args(char **curr_args, int new_arg_size);
 
 Cmd_Header *create_command(Args *ao) {
   char *possible_exe;
