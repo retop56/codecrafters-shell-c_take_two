@@ -1,6 +1,5 @@
 #include "arg_obj_def.h"
 #include "cmd_arg_parser.h"
-#include "argparser.h"
 #include "handle_commands.h"
 #include <readline/history.h>
 #include <readline/readline.h>
@@ -19,8 +18,8 @@ int last_append_entry_num = -1;
 int main() {
   rl_attempted_completion_function = completion_func;
   Args *ao;
-  check_for_history();
   using_history();
+  check_for_history();
   while (true) {
     // Wait for user input
     ao = create_args_obj();

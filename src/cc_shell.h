@@ -74,7 +74,6 @@ typedef struct {
   Cmd_Header* command;
   char * filename;
   redir_t redir_type;
-  // int redir_arg_num;
 } Redir_Command;
 
 typedef struct {

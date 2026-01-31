@@ -72,7 +72,7 @@ void add_cmd_args(Args *ao) {
   }
 }
 
-static char *get_normal_arg(void) {
+static void get_normal_arg(void) {
   while (*curr_char != '\0' && *curr_char != ' ') {
     if (*curr_char == '\\') {
       curr_arg[count++] = handle_backslash_char(OUTSIDE_QUOTES);
@@ -88,12 +88,6 @@ static char *get_normal_arg(void) {
       curr_arg[count++] = *curr_char++;
     }
   }
-  char *new_arg = strndup(curr_arg, count);
-  if (new_arg == NULL) {
-    fprintf(stderr, "strndup failed at line %d in %s\n", (__LINE__)-2,
-            __FUNCTION__);
-  }
-  return new_arg;
 }
 
 static bool empty_single_quotes_in_normal_arg(void) {
