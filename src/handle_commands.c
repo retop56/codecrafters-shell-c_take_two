@@ -37,6 +37,7 @@ Cmd_Header *create_command(Args *ao) {
   } else if (strncmp(ao->args[0], "history", 7) == 0) {
     return create_history_command(ao);
   } else if ((possible_exe = search_for_exec(ao->args[0])) != NULL) {
+    free(possible_exe);
     return create_executable_command(ao);
   } else {
     return create_invalid_command();
@@ -470,6 +471,7 @@ char *search_for_exec(char *exec_input) {
     dirp = opendir(curr_path);
     if (dirp == NULL) {
       curr_path = strtok(NULL, ":");
+      closedir(dirp);
       continue;
     }
     struct dirent *pDirent;
