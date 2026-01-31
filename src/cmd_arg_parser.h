@@ -6,6 +6,7 @@
 
 Args *create_args_obj();
 void add_cmd_args(Args *ao);
+void free_arg_object(Args* ao);
 static char *get_normal_arg(void);
 static void skip_past_spaces(void);
 static char *get_single_quote_arg(void);

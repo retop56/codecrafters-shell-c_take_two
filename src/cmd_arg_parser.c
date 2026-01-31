@@ -23,6 +23,14 @@ Args *create_args_obj() {
   return ao;
 }
 
+void free_arg_object(Args* ao) {
+  for (int i = 0; i < ao->size; i++) {
+    free(ao->args[i]);
+  }
+  free(ao);
+  return;
+}
+
 void add_cmd_args(Args *ao) {
   char *received_arg;
 

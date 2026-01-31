@@ -36,6 +36,7 @@ int main() {
     handle_command(cmd);
     free(input);
     free(cmd);
+    free_arg_object(ao);
   }
   return 0;
 }
