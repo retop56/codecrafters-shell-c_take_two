@@ -15,9 +15,22 @@ char *input = NULL;
 char *curr_char = NULL;
 int last_append_entry_num = -1;
 
+void check_for_history() {
+  char *hist_file = getenv("HISTFILE");
+  if (hist_file == NULL) {
+    return;
+  }
+  // if (read_history(hist_file) != 0) {
+  //   fprintf(stderr, "'read_history' failed! (%s: Line %d)\n", __FUNCTION__, __LINE__);
+  //   exit(EXIT_FAILURE);
+  // }
+  read_history(hist_file);
+}
+
 int main() {
   rl_attempted_completion_function = completion_func;
   Args *ao;
+  check_for_history();
   using_history();
   while (true) {
     // Wait for user input
