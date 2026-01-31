@@ -494,10 +494,10 @@ char *search_for_exec(char *exec_input) {
       return full_path;
     }
     curr_path = strtok(NULL, ":");
+    closedir(dirp);
   }
   free(full_path);
   free(paths);
-  closedir(dirp);
   return NULL;
 }
 
