@@ -27,6 +27,7 @@ void free_arg_object(Args* ao) {
   for (int i = 0; i < ao->size; i++) {
     free(ao->args[i]);
   }
+  free(ao->args);
   free(ao);
   return;
 }
