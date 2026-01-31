@@ -7,6 +7,7 @@
 
 static char *search_for_exec(char *exec_name);
 Cmd_Header *create_command(Args *ao);
+void free_command(Cmd_Header *cmd);
 static Cmd_Header *create_exit_command();
 static Cmd_Header *create_echo_command(Args *ao);
 static Cmd_Header *create_type_command(Args *ao);

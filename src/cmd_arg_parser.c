@@ -57,6 +57,8 @@ void add_cmd_args(Args *ao) {
       if (strncmp(curr_char, "\"", 1) == 0) {
         received_arg =
             skip_past_adjacent_quotes_and_combine(received_arg, '\"');
+      } else {
+        free(received_arg);
       }
     } else {
       get_normal_arg();

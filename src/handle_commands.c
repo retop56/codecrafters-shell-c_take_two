@@ -47,6 +47,11 @@ Cmd_Header *create_command(Args *ao) {
 
 void free_command(Cmd_Header *cmd) {
   Pipeline_Command *pc;
+  Redir_Command *rc;
+  Cd_Command *cc;
+  Executable_Command *ec;
+  Type_Command *tc;
+  Echo_Command *ech_c;
   switch (cmd->type) {
   case CMD_HISTORY:
     free_arg_object(((History_Command *)cmd)->ao);
@@ -54,7 +59,40 @@ void free_command(Cmd_Header *cmd) {
     break;
   case CMD_PIPELINE:
     pc = (Pipeline_Command *)cmd;
-
+    for (int i = 0; i < pc->num_of_cmds; i++) {
+      free_command(pc->cmds[i]);
+    }
+    free(pc->cmds);
+    free(pc);
+    break;
+  case CMD_REDIR:
+    rc = (Redir_Command *)cmd;
+    free_command(rc->command);
+    free(rc);
+    break;
+  case CMD_CD:
+    cc = (Cd_Command *)cmd;
+    free_arg_object(cc->ao);
+    free(cc);
+    break;
+  case CMD_EXECUTABLE:
+    ec = (Executable_Command *)cmd;
+    free_arg_object(ec->ao);
+    free(ec);
+    break;
+  case CMD_TYPE:
+    tc = (Type_Command *)cmd;
+    free_arg_object(tc->ao);
+    free(tc);
+    break;
+  case CMD_ECHO:
+    ech_c = (Echo_Command *)cmd;
+    free_arg_object(ech_c->ao);
+    free(ech_c);
+    break;
+  default:
+    free(cmd);
+    break;
   }
 }
 

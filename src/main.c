@@ -39,9 +39,7 @@ int main() {
     Cmd_Header *cmd = create_command(ao);
     handle_command(cmd);
     free(input);
-    // free_command(cmd);
-    free_arg_object(ao);
-    free(cmd);
+    free_command(cmd);
   }
   return 0;
 }
