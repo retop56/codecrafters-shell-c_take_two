@@ -2,6 +2,7 @@
 #include "arg_obj_def.h"
 #include "cc_shell.h"
 #include "cmd_arg_parser.h"
+#include "history_management.h"
 #include "shell_types.h"
 #include <fcntl.h>
 #include <linux/limits.h>
@@ -10,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "history_management.h"
 extern struct arg_obj *ao;
 extern char *input;
 extern char *curr_char;
@@ -42,6 +42,19 @@ Cmd_Header *create_command(Args *ao) {
     return create_invalid_command();
   }
   return NULL;
+}
+
+void free_command(Cmd_Header *cmd) {
+  Pipeline_Command *pc;
+  switch (cmd->type) {
+  case CMD_HISTORY:
+    free_arg_object(((History_Command *)cmd)->ao);
+    free(cmd);
+    break;
+  case CMD_PIPELINE:
+    pc = (Pipeline_Command *)cmd;
+
+  }
 }
 
 void handle_command(Cmd_Header *cmd) {
@@ -211,7 +224,7 @@ void handle_invalid_command(Cmd_Header *c) {
 
 void handle_exit_command() {
   write_history_on_exit();
-  exit(0); 
+  exit(0);
 }
 
 void handle_echo_command(Cmd_Header *c) {
@@ -581,15 +594,16 @@ void handle_history_command(Cmd_Header *c) {
       }
       return;
     }
-    if(strncmp(hc->ao->args[1], "-a", 2) == 0) {
+    if (strncmp(hc->ao->args[1], "-a", 2) == 0) {
       int entries_to_add;
       if (last_append_entry_num != -1) {
-         entries_to_add = history_length - last_append_entry_num;
+        entries_to_add = history_length - last_append_entry_num;
       } else {
         entries_to_add = history_length;
       }
       if (append_history(entries_to_add, hc->ao->args[2]) != 0) {
-        fprintf(stderr, "'append_history' failed! (%s: Line %d)\n", __FUNCTION__, __LINE__);
+        fprintf(stderr, "'append_history' failed! (%s: Line %d)\n",
+                __FUNCTION__, __LINE__);
         exit(EXIT_FAILURE);
       }
       last_append_entry_num = history_length;

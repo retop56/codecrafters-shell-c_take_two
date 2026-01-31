@@ -23,6 +23,16 @@ Args *create_args_obj() {
   return ao;
 }
 
+void expand_args_array(Args *ao) {
+  ao->args = realloc(ao->args, (ao->capacity * 2) * sizeof(char *));
+  if (ao->args == NULL) {
+    fprintf(stderr, "'realloc' failed! (%s: Line %d)\n)", __FUNCTION__, __LINE__);
+    exit(EXIT_FAILURE);
+  }
+  ao->capacity = ao->capacity * 2;
+  return;
+}
+
 void free_arg_object(Args* ao) {
   for (int i = 0; i < ao->size; i++) {
     free(ao->args[i]);
@@ -67,6 +77,9 @@ void add_cmd_args(Args *ao) {
     if (received_arg == NULL) {
       perror("strdup");
       exit(EXIT_FAILURE);
+    }
+    if (ao->size + 1 >= ao->capacity) {
+      expand_args_array(ao);
     }
     ao->args[ao->size++] = received_arg;
     memset(curr_arg, 0, BUFF_LENGTH);
