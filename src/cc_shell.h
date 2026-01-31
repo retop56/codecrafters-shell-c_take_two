@@ -26,6 +26,7 @@ typedef enum {
   CMD_CD,
   CMD_REDIR,
   CMD_PIPELINE,
+  CMD_HISTORY,
   CMD_COUNT
 } Cmd_Type;
 
@@ -83,3 +84,7 @@ typedef struct {
   int num_of_cmds;
   int pipe_arg_num;
 } Pipeline_Command;
+
+typedef struct {
+  Cmd_Header hdr;
+} History_Command;

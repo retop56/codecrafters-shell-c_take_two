@@ -17,6 +17,7 @@ char *curr_char = NULL;
 int main() {
   rl_attempted_completion_function = completion_func;
   Args *ao;
+  using_history();
   while (true) {
     // Wait for user input
     ao = create_args_obj();
@@ -25,6 +26,7 @@ int main() {
       free(input);
       break;
     }
+    add_history(input);
     curr_char = input;
     add_cmd_args(ao);
     // Replace \n at end of string with null

@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <readline/history.h>
 extern struct arg_obj *ao;
 extern char *input;
 extern char *curr_char;
@@ -32,7 +33,9 @@ Cmd_Header *create_command(Args *ao) {
     return create_pwd_command();
   } else if (strncmp(ao->args[0], "cd", 2) == 0) {
     return create_cd_command(ao);
-  } else if ((possible_exe = search_for_exec(ao->args[0])) != NULL) {
+  } else if (strncmp(ao->args[0], "history", 7) == 0) {
+    return create_history_command(ao);
+  }else if ((possible_exe = search_for_exec(ao->args[0])) != NULL) {
     return create_executable_command(ao);
   } else {
     return create_invalid_command();
@@ -68,6 +71,9 @@ void handle_command(Cmd_Header *cmd) {
     break;
   case CMD_PIPELINE:
     handle_pipeline_command(cmd);
+    break;
+  case CMD_HISTORY:
+    handle_history_command(cmd);
     break;
   default:
     fprintf(stderr, "Unable to determine command type!");
@@ -122,6 +128,11 @@ Cmd_Header *create_cd_command(Args *ao) {
   Cd_Command *c = (Cd_Command *)malloc(sizeof(Cd_Command));
   c->hdr.type = CMD_CD;
   c->ao = ao;
+  return (Cmd_Header *)c;
+}
+
+static Cmd_Header *create_history_command(Args *ao) {
+  History_Command *c = (History_Command *)malloc(sizeof(History_Command));  c->hdr.type = CMD_HISTORY;
   return (Cmd_Header *)c;
 }
 
@@ -539,4 +550,15 @@ void handle_cd_command(Cmd_Header *c) {
     return;
   }
   setenv("PWD", cd_comm->ao->args[1], 1);
+}
+
+void handle_history_command(Cmd_Header *c) {
+  // printf("Inside 'handle_history_command'\n");
+  History_Command *hc = (History_Command *)c;
+  HISTORY_STATE *hs = history_get_history_state();
+  // printf("Got back history state with %d entries\n", hs->length);
+  for (int i = 0; i < hs->length; i++) {
+    HIST_ENTRY *he = hs->entries[i];
+    printf("\t%d  %s\n", i + 1, he->line);
+  }
 }

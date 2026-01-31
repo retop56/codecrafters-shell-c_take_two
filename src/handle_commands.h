@@ -16,6 +16,7 @@ static Cmd_Header *create_pwd_command();
 static Cmd_Header *create_cd_command(Args *ao);
 static Cmd_Header *create_redir_command(Args *ao);
 static Cmd_Header *create_pipeline_command(Args *ao);
+static Cmd_Header *create_history_command(Args *ao);
 static redir_t check_if_redir_in_exec(Args *ao);
 
 void handle_command(Cmd_Header* cmd);
@@ -29,3 +30,4 @@ void handle_pwd_command();
 void handle_cd_command(Cmd_Header *c);
 void handle_redir_command(Cmd_Header *c);
 void handle_pipeline_command(Cmd_Header *c);
+void handle_history_command(Cmd_Header *c);
