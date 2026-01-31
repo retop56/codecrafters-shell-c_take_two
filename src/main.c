@@ -20,10 +20,6 @@ void check_for_history() {
   if (hist_file == NULL) {
     return;
   }
-  // if (read_history(hist_file) != 0) {
-  //   fprintf(stderr, "'read_history' failed! (%s: Line %d)\n", __FUNCTION__, __LINE__);
-  //   exit(EXIT_FAILURE);
-  // }
   read_history(hist_file);
 }
 
