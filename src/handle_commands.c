@@ -562,14 +562,23 @@ void handle_history_command(Cmd_Header *c) {
     clear_history();
     add_history(input);
     if (read_history(hc->ao->args[2]) != 0) {
-      fprintf(stderr, "'read_history' failed! (%s: Line %d)\n", __FUNCTION__, __LINE__);
+      fprintf(stderr, "'read_history' failed! (%s: Line %d)\n", __FUNCTION__,
+              __LINE__);
+      exit(EXIT_FAILURE);
+    }
+    return;
+  }
+  if (hc->ao->size > 2 && strncmp(hc->ao->args[1], "-w", 2) == 0) {
+    if (write_history(hc->ao->args[2]) != 0) {
+      fprintf(stderr, "'write_history' failed! (%s: Line %d)\n", __FUNCTION__,
+              __LINE__);
       exit(EXIT_FAILURE);
     }
     return;
   }
   if (hc->ao->size > 1) {
     int entry_start = hs->length - atoi(hc->ao->args[1]);
-    for(int i = entry_start; i < hs->length; i++) {
+    for (int i = entry_start; i < hs->length; i++) {
       printf("    %d  %s\n", i + 1, hs->entries[i]->line);
     }
     return;
