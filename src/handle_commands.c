@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "history_management.h"
 extern struct arg_obj *ao;
 extern char *input;
 extern char *curr_char;
@@ -209,7 +210,10 @@ void handle_invalid_command(Cmd_Header *c) {
   printf("%s: command not found\n", ((Invalid_Command *)c)->txt);
 }
 
-void handle_exit_command() { exit(0); }
+void handle_exit_command() {
+  write_history_on_exit();
+  exit(0); 
+}
 
 void handle_echo_command(Cmd_Header *c) {
   Echo_Command *ec = (Echo_Command *)c;

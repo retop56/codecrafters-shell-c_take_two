@@ -10,18 +10,11 @@
 #include "cc_shell.h"
 #include "shell_types.h"
 #include "completion.h"
+#include "history_management.h"
 struct arg_obj *ao;
 char *input = NULL;
 char *curr_char = NULL;
 int last_append_entry_num = -1;
-
-void check_for_history() {
-  char *hist_file = getenv("HISTFILE");
-  if (hist_file == NULL) {
-    return;
-  }
-  read_history(hist_file);
-}
 
 int main() {
   rl_attempted_completion_function = completion_func;
